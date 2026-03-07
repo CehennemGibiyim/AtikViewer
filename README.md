@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATİK VİEWER — Kurulum ve Kullanım Kılavuzu</title>
+<style>
+  :root {
+    --accent: #00e5c8;
+    --accent2: #7c3aed;
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── HEADER ── */
+  .hero {
+    background: linear-gradient(135deg, #0a0e1a 0%, #0d1f2d 50%, #0a1520 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,229,200,0.08) 0%, transparent 70%);
+  }
+  .hero-logo {
+    font-size: 42px; font-weight: 900; letter-spacing: 6px;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,229,200,0.4), 0 0 60px rgba(0,229,200,0.2);
+    margin-bottom: 10px;
+  }
+  .hero-sub {
+    font-size: 16px; color: var(--text2); letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+  .badge-row {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .badge {
+    padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    letter-spacing: .5px;
+  }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-cyan  { background: rgba(0,229,200,0.12); color: var(--accent); border: 1px solid rgba(0,229,200,0.3); }
+  .badge-purple{ background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+  .badge-yellow{ background: rgba(210,153,34,0.15); color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 960px; margin: 0 auto; padding: 0 28px 60px; }
+  .toc {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px 28px; margin: 36px 0;
+  }
+  .toc h3 { color: var(--accent); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: var(--text2); text-decoration: none; transition: color .15s; }
+  .toc a:hover { color: var(--accent); }
+
+  /* ── SECTIONS ── */
+  .section { margin: 48px 0; }
+  .section-hdr {
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 28px;
+  }
+  .section-num {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: var(--accent); color: #000; font-weight: 900; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .section-num.purple { background: #a78bfa; }
+  .section-num.green  { background: var(--green); }
+  .section-num.yellow { background: var(--yellow); }
+  h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+  h3 { font-size: 16px; font-weight: 700; color: var(--accent); margin: 24px 0 10px; }
+  p  { color: var(--text2); margin: 8px 0; }
+  p strong { color: var(--text); }
+
+  /* ── STEP BOXES ── */
+  .steps { display: flex; flex-direction: column; gap: 16px; }
+  .step {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .step-n {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(0,229,200,0.15); border: 1px solid var(--accent);
+    color: var(--accent); font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-weight: 700; color: var(--text); font-size: 14px; margin-bottom: 4px; }
+  .step-desc { color: var(--text2); font-size: 13px; }
+  .step-code {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; font-family: 'Consolas', monospace; font-size: 12px;
+    color: var(--accent); margin-top: 8px; word-break: break-all;
+  }
+
+  /* ── CODE BLOCK ── */
+  pre {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px 18px; overflow-x: auto; font-size: 12.5px;
+    font-family: 'Consolas', 'Courier New', monospace; color: #e6edf3;
+    line-height: 1.6; margin: 12px 0;
+  }
+  code { background: var(--bg3); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--accent); }
+
+  /* ── UI DIAGRAM ── */
+  .diagram-wrap {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin: 20px 0;
+  }
+  .diagram-caption {
+    background: var(--bg3); padding: 8px 16px;
+    font-size: 11px; color: var(--text2); border-top: 1px solid var(--border);
+    text-align: center; letter-spacing: .5px;
+  }
+
+  /* ── FEATURE GRID ── */
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px; margin: 16px 0;
+  }
+  .feat-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .feat-icon { font-size: 22px; margin-bottom: 8px; }
+  .feat-title { font-weight: 700; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .feat-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+  /* ── SHORTCUT TABLE ── */
+  .kbd-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .kbd-table th {
+    background: var(--bg3); color: var(--accent);
+    padding: 8px 12px; text-align: left; font-size: 11px;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .kbd-table td {
+    padding: 7px 12px; font-size: 13px; border-bottom: 1px solid rgba(48,54,61,0.5);
+    vertical-align: middle;
+  }
+  .kbd-table tr:last-child td { border-bottom: none; }
+  .kbd { display: inline-block; background: var(--bg3); border: 1px solid var(--border);
+    border-bottom: 2px solid var(--border); border-radius: 4px;
+    padding: 1px 7px; font-family: monospace; font-size: 11px; color: var(--text); }
+
+  /* ── ALERT BOXES ── */
+  .alert {
+    border-radius: 8px; padding: 14px 18px; margin: 14px 0;
+    display: flex; gap: 12px; align-items: flex-start; font-size: 13px;
+  }
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-body { flex: 1; }
+  .alert-green  { background: rgba(63,185,80,0.08);  border: 1px solid rgba(63,185,80,0.25);  color: #7ee787; }
+  .alert-yellow { background: rgba(210,153,34,0.08); border: 1px solid rgba(210,153,34,0.25); color: #e3b341; }
+  .alert-cyan   { background: rgba(0,229,200,0.08);  border: 1px solid rgba(0,229,200,0.25);  color: var(--accent); }
+  .alert-red    { background: rgba(248,81,73,0.08);  border: 1px solid rgba(248,81,73,0.25);  color: #ff7b72; }
+
+  /* ── FILE TREE ── */
+  .file-tree {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px 20px; font-family: monospace; font-size: 13px; line-height: 2;
+  }
+  .ft-dir  { color: #79c0ff; }
+  .ft-file { color: var(--text); }
+  .ft-note { color: var(--text2); font-size: 11px; }
+  .ft-imp  { color: var(--accent); font-weight: bold; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border); padding: 30px 40px;
+    text-align: center; color: var(--text2); font-size: 13px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ HERO ══════════════════════ -->
+<div class="hero">
+  <div class="hero-logo">⊕ ATİK VİEWER</div>
+  <div class="hero-sub">Tıbbi Görüntüleme Sistemi — Kurulum ve Kullanım Kılavuzu</div>
+  <div class="badge-row">
+    <span class="badge badge-cyan">v1.1.0 BETA</span>
+    <span class="badge badge-green">Sıfır Bağımlılık (HTML Modu)</span>
+    <span class="badge badge-purple">Node.js Proxy Modu</span>
+    <span class="badge badge-yellow">DICOM · JPEG · PNG · NIfTI</span>
+  </div>
+</div>
+
+<!-- ══════════════════════ CONTAINER ══════════════════════ -->
+<div class="container">
+
+  <!-- İçindekiler -->
+  <div class="toc">
+    <h3>📋 İçindekiler</h3>
+    <ol>
+      <li><a href="#kurulum">Kurulum — İki Mod</a></li>
+      <li><a href="#arayuz">Arayüz Tanıtımı</a></li>
+      <li><a href="#dosya">Dosya Açma</a></li>
+      <li><a href="#pacs">PACS Bağlantısı</a></li>
+      <li><a href="#araclar">Görüntüleme Araçları</a></li>
+      <li><a href="#kisayollar">Klavye Kısayolları</a></li>
+      <li><a href="#sorun">Sorun Giderme</a></li>
+    </ol>
+  </div>
+
+  <!-- ══ 1. KURULUM ══ -->
+  <div class="section" id="kurulum">
+    <div class="section-hdr">
+      <div class="section-num">1</div>
+      <h2>Kurulum — İki Çalışma Modu</h2>
+    </div>
+
+    <p>Atik Viewer iki farklı modda çalışabilir. İhtiyacınıza göre birini seçin:</p>
+
+    <!-- MOD A -->
+    <h3>🅐 HTML Modu (Basit — Tarayıcıda Direkt Aç)</h3>
+    <p>Node.js gerektirmez. Yerel DICOM dosyaları açmak için idealdir. PACS'tan görüntü çekme kısıtlı olabilir.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-body">
+          <div class="step-title">atik-viewer.html dosyasını indirin</div>
+          <div class="step-desc">Releases sayfasından veya doğrudan GitHub'dan indirin.</div>
+          <div class="step-code">https://github.com/CehennemGibiyim/AtikAnaliz</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-body">
+          <div class="step-title">Dosyaya çift tıklayın</div>
+          <div class="step-desc">Varsayılan tarayıcınızda (Chrome, Edge, Firefox) açılır. Kurulum gerekmez.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-body">
+          <div class="step-title">DICOM dosyalarınızı sürükleyip bırakın</div>
+          <div class="step-desc">Ekran ortasına .dcm, .dicom, JPEG, PNG, NIfTI dosyalarını sürükleyin.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOD B -->
+    <h3 style="margin-top:32px;">🅑 Proxy Modu (PACS Entegrasyonu için — Önerilen)</h3>
+    <p>Gerçek PACS sorgusu (C-FIND / WADO-RS) için Node.js proxy gereklidir. CORS engelini aşar.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-body">
+          <div class="step-title">4 dosyayı aynı klasöre koyun</div>
+          <div class="step-desc">Tüm dosyalar aynı dizinde olmalıdır:</div>
+          <div class="file-tree">
+            <div><span class="ft-dir">📁 AtikAnaliz/</span></div>
+            <div>&nbsp;&nbsp;├── <span class="ft-imp">atik-viewer.html</span> <span class="ft-note">← Ana uygulama</span></div>
+            <div>&nbsp;&nbsp;├── <span class="ft-imp">server.js</span>         <span class="ft-note">← Proxy sunucusu</span></div>
+            <div>&nbsp;&nbsp;├── <span class="ft-file">package.json</span>     <span class="ft-note">← Bağımlılık tanımı</span></div>
+            <div>&nbsp;&nbsp;└── <span class="ft-imp">BASLAT.bat</span>        <span class="ft-note">← Windows başlatıcı</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-body">
+          <div class="step-title">Node.js yükleyin (bir kez)</div>
+          <div class="step-desc">Node.js kurulu değilse BASLAT.bat otomatik yönlendirme yapar.</div>
+          <div class="step-code">https://nodejs.org → LTS sürümünü indirin</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-body">
+          <div class="step-title">BASLAT.bat dosyasına çift tıklayın</div>
+          <div class="step-desc">İlk çalıştırmada npm install otomatik yapılır. Tarayıcı localhost:3000 adresinde açılır.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
+        <div class="step-body">
+          <div class="step-title">Tarayıcıda açın</div>
+          <div class="step-code">http://localhost:3000</div>
+          <div class="step-desc" style="margin-top:6px;">BASLAT.bat bunu otomatik yapar. Siyah bir komut penceresi açık kaldığı sürece sunucu çalışır.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-yellow" style="margin-top:20px;">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">Proxy sunucusunu kapatmak için komut penceresini kapatmanız yeterlidir. Bilgisayar yeniden başlatıldığında BASLAT.bat'ı tekrar çalıştırın.</div>
+    </div>
+  </div>
+
+  <!-- ══ 2. ARAYÜZ ══ -->
+  <div class="section" id="arayuz">
+    <div class="section-hdr">
+      <div class="section-num purple">2</div>
+      <h2>Arayüz Tanıtımı</h2>
+    </div>
+
+    <!-- SVG Diagram of UI -->
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 900 540" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;background:#0d1117;">
+        <!-- Defs -->
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#00e5c8"/>
+          </marker>
+        </defs>
+
+        <!-- ─ Title bar ─ -->
+        <rect x="0" y="0" width="900" height="26" fill="#040810"/>
+        <text x="14" y="17" fill="#00e5c8" font-size="11" font-weight="900" font-family="monospace" letter-spacing="2">⊕ ATİK VİEWER v1.0.0</text>
+        <text x="820" y="17" fill="#444" font-size="9" font-family="sans-serif">TEMA: ● ○ ◑ ◐</text>
+
+        <!-- ─ Menu bar ─ -->
+        <rect x="0" y="26" width="900" height="22" fill="#090f1a"/>
+        <text x="10" y="40" fill="#8899bb" font-size="10" font-family="sans-serif">Dosya</text>
+        <text x="50" y="40" fill="#8899bb" font-size="10" font-family="sans-serif">Görünüm</text>
+        <text x="102" y="40" fill="#8899bb" font-size="10" font-family="sans-serif">Araçlar</text>
+        <text x="148" y="40" fill="#8899bb" font-size="10" font-family="sans-serif">Filtreler</text>
+        <text x="196" y="40" fill="#8899bb" font-size="10" font-family="sans-serif">Pencere</text>
+        <text x="244" y="40" fill="#00e5c8" font-size="10" font-weight="bold" font-family="sans-serif">PACS</text>
+        <text x="278" y="40" fill="#8899bb" font-size="10" font-family="sans-serif">Yardım</text>
+
+        <!-- ─ Toolbar ─ -->
+        <rect x="0" y="48" width="900" height="30" fill="#0d1520" stroke="#1e2d45" stroke-width="1"/>
+        <text x="8" y="66" fill="#00e5c8" font-size="9" font-family="monospace">PACS  DÜZEN  1x1  2x1  2x2  1x3  2x3  MOD  MPR  3D  |  ARAÇ  🌓  🔍  ✋  ↕  |  ÖLÇÜM  📏  📐  ⬜  ⭕  |  DÖNDÜR  |  ZOOM  |  1:1  |  PRESET  ABD AKC KEM BEY  |  FİLTRE  |  ORJ</text>
+
+        <!-- ─ Left panel ─ -->
+        <rect x="0" y="78" width="250" height="422" fill="#0a1020" stroke="#1e2d45" stroke-width="1"/>
+
+        <!-- Tab bar -->
+        <rect x="0" y="78" width="250" height="26" fill="#0d1520"/>
+        <rect x="0" y="78" width="80" height="26" fill="#0a1a2e"/>
+        <text x="18" y="95" fill="#00e5c8" font-size="10" font-weight="bold" font-family="sans-serif">PACS</text>
+        <text x="98" y="95" fill="#556688" font-size="10" font-family="sans-serif">LOKAL</text>
+        <text x="168" y="95" fill="#556688" font-size="10" font-family="sans-serif">BİLGİ</text>
+
+        <!-- PACS panel content -->
+        <text x="10" y="120" fill="#445566" font-size="9" font-family="sans-serif">🔌 PACS SUNUCUSU</text>
+        <rect x="8" y="126" width="234" height="18" rx="3" fill="#0d1a2a" stroke="#1e3050"/>
+        <text x="14" y="138" fill="#556688" font-size="9" font-family="sans-serif">Sunucu: ARTVIN PACS (10.8.64.8:4006)</text>
+
+        <rect x="8" y="150" width="108" height="18" rx="3" fill="#0a2a1e" stroke="#1e5040"/>
+        <text x="14" y="162" fill="#00c8a0" font-size="9" font-family="sans-serif">🔌 Test</text>
+        <rect x="124" y="150" width="118" height="18" rx="3" fill="#0a1a30" stroke="#1e3060"/>
+        <text x="134" y="162" fill="#4488cc" font-size="9" font-family="sans-serif">⚙ Ayarlar</text>
+
+        <text x="10" y="185" fill="#445566" font-size="9" font-family="sans-serif">🔍 HASTA / ÇALIŞMA SORGUSU</text>
+        <text x="10" y="202" fill="#556688" font-size="8" font-family="sans-serif">Hasta Adı</text>
+        <rect x="68" y="193" width="174" height="14" rx="2" fill="#0d1a2a" stroke="#1e3050"/>
+        <text x="10" y="220" fill="#556688" font-size="8" font-family="sans-serif">Hasta ID</text>
+        <rect x="68" y="211" width="174" height="14" rx="2" fill="#0d1a2a" stroke="#1e3050"/>
+        <text x="10" y="238" fill="#556688" font-size="8" font-family="sans-serif">Tarih</text>
+        <rect x="68" y="229" width="80" height="12" rx="2" fill="#0d1a2a" stroke="#1e3050"/>
+        <rect x="154" y="229" width="88" height="12" rx="2" fill="#0d1a2a" stroke="#1e3050"/>
+
+        <!-- Modality checkboxes -->
+        <text x="10" y="256" fill="#556688" font-size="8" font-family="sans-serif">Modalite</text>
+        <text x="68" y="256" fill="#00c8a0" font-size="8" font-family="sans-serif">✓CT  ✓MR  ✓CR  ✓US  ✓XA</text>
+
+        <rect x="8" y="263" width="234" height="20" rx="3" fill="#0a1e30" stroke="#1e4060"/>
+        <text x="60" y="276" fill="#00c8a0" font-size="10" font-weight="bold" font-family="sans-serif">🔍 SORGULA (C-FIND)</text>
+
+        <rect x="8" y="288" width="234" height="18" rx="3" fill="#1a0a20" stroke="#401e50"/>
+        <text x="40" y="300" fill="#aa66cc" font-size="9" font-family="sans-serif">⬇ SEÇİLİ ÇALIŞMAYI İNDİR</text>
+
+        <text x="10" y="320" fill="#445566" font-size="9" font-family="sans-serif">SONUÇLAR</text>
+
+        <!-- Result items -->
+        <rect x="8" y="325" width="234" height="44" rx="3" fill="#0a1a2e" stroke="#1e3050"/>
+        <text x="14" y="338" fill="#00e5c8" font-size="8" font-family="sans-serif">👤 UYGUR MUSTAFA</text>
+        <text x="14" y="349" fill="#556688" font-size="7" font-family="sans-serif">ID: 43621 · 2024-05-08 · 🖼 274 görüntü</text>
+        <text x="14" y="359" fill="#8899aa" font-size="7" font-family="sans-serif">BT Servikal Vertebra</text>
+        <rect x="14" y="363" width="20" height="8" rx="2" fill="#1a3a2a"/>
+        <text x="16" y="370" fill="#00c080" font-size="6" font-family="sans-serif">CT</text>
+        <text x="196" y="370" fill="#00e5c8" font-size="7" font-family="sans-serif">▶ Görüntüle</text>
+
+        <rect x="8" y="374" width="234" height="36" rx="3" fill="#0a1220" stroke="#1e2840"/>
+        <text x="14" y="386" fill="#9999cc" font-size="8" font-family="sans-serif">👤 ÇELİK FATİH</text>
+        <text x="14" y="396" fill="#445566" font-size="7" font-family="sans-serif">ID: 51203 · 2024-03-15 · 🖼 45 görüntü</text>
+        <text x="14" y="406" fill="#666688" font-size="7" font-family="sans-serif">Akciğer PA</text>
+
+        <!-- ─ Main viewport ─ -->
+        <rect x="250" y="78" width="510" height="422" fill="#050c14" stroke="#1e2d45" stroke-width="1"/>
+
+        <!-- Patient info overlay -->
+        <text x="258" y="96" fill="#8899aa" font-size="8" font-family="monospace">MUSTAFA UYGUR</text>
+        <text x="258" y="107" fill="#8899aa" font-size="8" font-family="monospace">43621</text>
+        <text x="258" y="118" fill="#8899aa" font-size="8" font-family="monospace">17.09.1982 · 41Y M</text>
+        <text x="258" y="129" fill="#8899aa" font-size="8" font-family="monospace">08.05.2024</text>
+
+        <!-- Simulated CT image -->
+        <ellipse cx="505" cy="290" rx="175" ry="185" fill="#0a1c0a"/>
+        <ellipse cx="505" cy="290" rx="170" ry="180" fill="#0c2010" stroke="#1a3a20" stroke-width="2"/>
+        <ellipse cx="505" cy="270" rx="60" ry="65" fill="#1a4020"/>
+        <ellipse cx="505" cy="270" rx="50" ry="55" fill="#0e2a18"/>
+        <ellipse cx="484" cy="268" rx="18" ry="22" fill="#1e4a28" opacity="0.8"/>
+        <ellipse cx="526" cy="268" rx="18" ry="22" fill="#1e4a28" opacity="0.8"/>
+        <ellipse cx="505" cy="300" rx="8" ry="12" fill="#2a5a38"/>
+        <path d="M 450 200 Q 505 160 560 200 Q 580 240 560 280 Q 530 320 505 330 Q 480 320 450 280 Q 430 240 450 200" fill="none" stroke="#1e4428" stroke-width="1.5"/>
+
+        <!-- WL overlay -->
+        <text x="258" y="488" fill="#00e5c8" font-size="7" font-family="monospace">W: 400  L: 40</text>
+        <text x="310" y="488" fill="#556688" font-size="7" font-family="monospace">Zoom: 1.00×</text>
+        <text x="380" y="488" fill="#556688" font-size="7" font-family="monospace">IMA: 47/274</text>
+        <text x="700" y="96" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">Artvin Devlet Hast.</text>
+        <text x="700" y="107" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">BT Servikal Vertebra</text>
+        <text x="700" y="118" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">CT</text>
+
+        <!-- ─ Right panel ─ -->
+        <rect x="760" y="78" width="140" height="422" fill="#0a1020" stroke="#1e2d45" stroke-width="1"/>
+        <rect x="760" y="78" width="140" height="26" fill="#0d1520"/>
+        <text x="774" y="95" fill="#556688" font-size="9" font-family="sans-serif">🖼 SERİ</text>
+        <text x="858" y="95" fill="#00e5c8" font-size="8" font-family="monospace">274 görüntü</text>
+
+        <!-- Thumbnail -->
+        <rect x="768" y="110" width="124" height="90" rx="4" fill="#050c14" stroke="#00e5c8" stroke-width="1.5"/>
+        <ellipse cx="830" cy="155" rx="44" ry="40" fill="#0c1e0e"/>
+        <ellipse cx="819" cy="153" rx="12" ry="14" fill="#1a3a20"/>
+        <ellipse cx="841" cy="153" rx="12" ry="14" fill="#1a3a20"/>
+        <text x="830" y="208" fill="#00e5c8" font-size="8" text-anchor="middle" font-family="monospace">1/274</text>
+
+        <rect x="768" y="215" width="124" height="80" rx="4" fill="#050c14" stroke="#1e2d45"/>
+        <ellipse cx="830" cy="255" rx="40" ry="36" fill="#0c1020"/>
+        <text x="830" y="303" fill="#445566" font-size="8" text-anchor="middle" font-family="monospace">2/274</text>
+
+        <!-- ─ Status bar ─ -->
+        <rect x="0" y="500" width="900" height="22" fill="#040810" stroke="#1e2d45" stroke-width="1"/>
+        <circle cx="14" cy="511" r="4" fill="#00e5c8"/>
+        <text x="24" y="515" fill="#445566" font-size="8" font-family="sans-serif">PACS: ARTVIN PACS (C-ECHO OK)</text>
+        <text x="240" y="515" fill="#445566" font-size="8" font-family="sans-serif">Modality: CT</text>
+        <text x="330" y="515" fill="#445566" font-size="8" font-family="sans-serif">W/L: 400/40</text>
+        <text x="420" y="515" fill="#445566" font-size="8" font-family="sans-serif">Zoom: 1.0×</text>
+        <text x="510" y="515" fill="#445566" font-size="8" font-family="sans-serif">Kare: 47/274</text>
+
+        <!-- ── CALLOUT LABELS ── -->
+        <!-- Title bar label -->
+        <line x1="160" y1="13" x2="260" y2="60" stroke="#00e5c8" stroke-width="0.8" stroke-dasharray="3,2" marker-end="url(#arr)"/>
+        <rect x="0" y="522" width="1" height="1" fill="none"/>
+
+        <!-- Arrows + labels below diagram -->
+      </svg>
+      <div class="diagram-caption">Şekil 1 — Atik Viewer Ana Arayüzü · Koyu tema, PACS bağlı, CT görüntü yüklü</div>
+    </div>
+
+    <!-- Component descriptions -->
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🔝</div>
+        <div class="feat-title">Başlık Çubuğu</div>
+        <div class="feat-desc">Uygulama adı, sürüm bilgisi ve sağ tarafta 7 farklı renk teması seçicisi bulunur.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📋</div>
+        <div class="feat-title">Menü Çubuğu</div>
+        <div class="feat-desc">Tıklayarak açılan açılır menüler: Dosya, Görünüm, Araçlar, Filtreler, Pencere, PACS, Yardım.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🛠</div>
+        <div class="feat-title">Araç Çubuğu</div>
+        <div class="feat-desc">Izgaralar, görüntüleme araçları, ölçüm araçları, döndürme, zoom ve pencere/seviye önayarları.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">◧</div>
+        <div class="feat-title">Sol Panel (PACS / Lokal / Bilgi)</div>
+        <div class="feat-desc">PACS sorgusu, lokal dosya ağacı ve DICOM etiket bilgileri üç sekme halinde.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🖥</div>
+        <div class="feat-title">Görüntü Alanı (Viewport)</div>
+        <div class="feat-desc">Hasta bilgisi overlay, DICOM görüntü, pencere/seviye ve zoom bilgisi. 1×1'den 2×3'e kadar ızgara.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">◨</div>
+        <div class="feat-title">Sağ Panel (Seri / Thumbnail)</div>
+        <div class="feat-desc">Yüklenen serinin thumbnail listesi, kare numarası. Tıklayarak kareye atlanır.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3. DOSYA AÇMA ══ -->
+  <div class="section" id="dosya">
+    <div class="section-hdr">
+      <div class="section-num green">3</div>
+      <div>
+        <h2>Dosya Açma</h2>
+        <p style="margin:4px 0 0;font-size:13px;color:var(--text2);">DICOM, JPEG, PNG, BMP, TIFF, NIfTI formatları desteklenir</p>
+      </div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;background:#0d1117;">
+        <!-- 3 yöntem yan yana -->
+        <!-- Sürükle bırak -->
+        <rect x="20" y="20" width="200" height="180" rx="10" fill="#0a1520" stroke="#1e3050"/>
+        <text x="120" y="48" fill="#00e5c8" font-size="11" font-weight="bold" text-anchor="middle" font-family="sans-serif">① Sürükle &amp; Bırak</text>
+        <rect x="50" y="60" width="140" height="90" rx="8" fill="#050c14" stroke="#1e3050" stroke-dasharray="4,3"/>
+        <text x="120" y="105" fill="#334455" font-size="28" text-anchor="middle">📂</text>
+        <text x="120" y="128" fill="#556688" font-size="9" text-anchor="middle" font-family="sans-serif">Dosyaları buraya</text>
+        <text x="120" y="140" fill="#556688" font-size="9" text-anchor="middle" font-family="sans-serif">sürükleyin</text>
+        <text x="120" y="185" fill="#334455" font-size="8" text-anchor="middle" font-family="sans-serif">.dcm · .dicom · klasör</text>
+
+        <!-- Dosya butonu -->
+        <rect x="250" y="20" width="200" height="180" rx="10" fill="#0a1520" stroke="#1e3050"/>
+        <text x="350" y="48" fill="#00e5c8" font-size="11" font-weight="bold" text-anchor="middle" font-family="sans-serif">② Buton ile Aç</text>
+        <rect x="280" y="80" width="140" height="28" rx="6" fill="#0a2218" stroke="#1e4030"/>
+        <text x="350" y="98" fill="#00c890" font-size="10" font-weight="bold" text-anchor="middle" font-family="sans-serif">📂 Dosya Aç</text>
+        <rect x="280" y="116" width="140" height="28" rx="6" fill="#0a2218" stroke="#1e4030"/>
+        <text x="350" y="134" fill="#00c890" font-size="10" font-weight="bold" text-anchor="middle" font-family="sans-serif">📁 Klasör Aç</text>
+        <text x="350" y="185" fill="#334455" font-size="8" text-anchor="middle" font-family="sans-serif">Ctrl+O · Ctrl+Shift+O</text>
+
+        <!-- PACS -->
+        <rect x="480" y="20" width="200" height="180" rx="10" fill="#0a1520" stroke="#3a1e50"/>
+        <text x="580" y="48" fill="#a78bfa" font-size="11" font-weight="bold" text-anchor="middle" font-family="sans-serif">③ PACS'tan Çek</text>
+        <rect x="510" y="70" width="140" height="16" rx="3" fill="#0d1a2a" stroke="#1e3050"/>
+        <text x="516" y="81" fill="#556688" font-size="8" font-family="sans-serif">Hasta Adı: mustafa*</text>
+        <rect x="510" y="92" width="140" height="28" rx="6" fill="#1a0a2a" stroke="#401e60"/>
+        <text x="580" y="110" fill="#c090ff" font-size="10" font-weight="bold" text-anchor="middle" font-family="sans-serif">🔍 SORGULA</text>
+        <rect x="510" y="128" width="140" height="16" rx="3" fill="#0a1a2e" stroke="#1e3050"/>
+        <text x="516" y="139" fill="#00e5c8" font-size="8" font-family="sans-serif">👤 MUSTAFA UYGUR</text>
+        <text x="580" y="155" fill="#334455" font-size="8" text-anchor="middle" font-family="sans-serif">▶ Görüntüle butonuna basın</text>
+        <text x="580" y="185" fill="#553355" font-size="8" text-anchor="middle" font-family="sans-serif">Proxy modu gerektirir</text>
+      </svg>
+      <div class="diagram-caption">Şekil 2 — Üç farklı görüntü yükleme yöntemi</div>
+    </div>
+
+    <div class="alert alert-cyan">
+      <span class="alert-icon">💡</span>
+      <div class="alert-body"><strong>İpucu:</strong> Klasör sürükleyip bıraktığınızda tüm alt klasörler de taranır. Çok kesitli CT/MR serileri otomatik olarak birleştirilerek seri olarak açılır.</div>
+    </div>
+  </div>
+
+  <!-- ══ 4. PACS ══ -->
+  <div class="section" id="pacs">
+    <div class="section-hdr">
+      <div class="section-num yellow">4</div>
+      <div>
+        <h2>PACS Bağlantısı</h2>
+        <p style="margin:4px 0 0;font-size:13px;color:var(--text2);">Akgun, DCM4CHEE, Orthanc ve DICOMweb destekli PACS sistemleri</p>
+      </div>
+    </div>
+
+    <h3>PACS Sunucu Ayarları</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;background:#0d1117;">
+        <!-- Modal -->
+        <rect x="100" y="20" width="500" height="260" rx="10" fill="#0d1a28" stroke="#1e3850"/>
+        <rect x="100" y="20" width="500" height="36" rx="10" fill="#0a1520"/>
+        <rect x="100" y="46" width="500" height="10" fill="#0a1520"/>
+        <text x="130" y="42" fill="#8899bb" font-size="11" font-weight="bold" font-family="sans-serif">⚙ PACS Bağlantı Ayarları</text>
+
+        <!-- Server list -->
+        <rect x="120" y="65" width="180" height="100" rx="6" fill="#07101a" stroke="#1e3050"/>
+        <text x="130" y="82" fill="#00e5c8" font-size="9" font-family="sans-serif">● ARTVIN PACS</text>
+        <text x="136" y="94" fill="#445566" font-size="8" font-family="monospace">10.8.64.8:4006</text>
+        <rect x="122" y="98" width="176" height="1" fill="#1e2d45"/>
+        <text x="130" y="112" fill="#556688" font-size="9" font-family="sans-serif">○ RIZE PACS</text>
+        <text x="130" y="125" fill="#556688" font-size="9" font-family="sans-serif">○ TEST SERVER</text>
+
+        <!-- Buttons -->
+        <rect x="120" y="172" width="55" height="18" rx="3" fill="#0a2218" stroke="#1e4030"/>
+        <text x="147" y="184" fill="#00c890" font-size="8" text-anchor="middle" font-family="sans-serif">+ Ekle</text>
+        <rect x="182" y="172" width="58" height="18" rx="3" fill="#1a1a08" stroke="#404020"/>
+        <text x="211" y="184" fill="#c8c000" font-size="8" text-anchor="middle" font-family="sans-serif">✏ Düzenle</text>
+        <rect x="247" y="172" width="50" height="18" rx="3" fill="#2a0a08" stroke="#502020"/>
+        <text x="272" y="184" fill="#ff6666" font-size="8" text-anchor="middle" font-family="sans-serif">✕ Sil</text>
+
+        <!-- Form -->
+        <text x="330" y="78" fill="#445566" font-size="8" font-family="sans-serif">Sunucu Açıklaması</text>
+        <rect x="328" y="82" width="250" height="18" rx="3" fill="#060e18" stroke="#1e3050"/>
+        <text x="334" y="94" fill="#8899aa" font-size="9" font-family="monospace">ARTVIN PACS</text>
+
+        <text x="330" y="110" fill="#445566" font-size="8" font-family="sans-serif">IP Adresi</text>
+        <rect x="328" y="114" width="250" height="18" rx="3" fill="#060e18" stroke="#1e3050"/>
+        <text x="334" y="126" fill="#8899aa" font-size="9" font-family="monospace">10.8.64.8</text>
+
+        <text x="330" y="142" fill="#445566" font-size="8" font-family="sans-serif">AE Title</text>
+        <rect x="328" y="146" width="115" height="18" rx="3" fill="#060e18" stroke="#1e3050"/>
+        <text x="334" y="158" fill="#8899aa" font-size="9" font-family="monospace">DCM_SERVER</text>
+
+        <text x="454" y="142" fill="#445566" font-size="8" font-family="sans-serif">Port</text>
+        <rect x="452" y="146" width="126" height="18" rx="3" fill="#060e18" stroke="#1e3050"/>
+        <text x="458" y="158" fill="#8899aa" font-size="9" font-family="monospace">4006</text>
+
+        <!-- Test button -->
+        <rect x="328" y="200" width="110" height="22" rx="4" fill="#0a2a18" stroke="#1e5030"/>
+        <text x="383" y="215" fill="#00e5c8" font-size="10" font-weight="bold" text-anchor="middle" font-family="sans-serif">🔌 Test Et</text>
+
+        <rect x="448" y="200" width="130" height="22" rx="4" fill="#0a1a2a" stroke="#1e3050"/>
+        <text x="513" y="215" fill="#4488cc" font-size="10" font-weight="bold" text-anchor="middle" font-family="sans-serif">✔ Kaydet</text>
+
+        <!-- Status -->
+        <circle cx="340" cy="256" r="5" fill="#00c890"/>
+        <text x="352" y="260" fill="#00c890" font-size="9" font-family="sans-serif">C-ECHO başarılı — ARTVIN PACS bağlı</text>
+      </svg>
+      <div class="diagram-caption">Şekil 3 — PACS Sunucu Ayarları ekranı. PACS menüsü → PACS Sunucu Ayarları veya Sol panel → Ayarlar butonu</div>
+    </div>
+
+    <h3>Hasta Sorgulama Akışı</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;background:#0d1117;padding:16px;">
+        <defs>
+          <marker id="arr2" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#00e5c8"/>
+          </marker>
+          <marker id="arr3" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#a78bfa"/>
+          </marker>
+        </defs>
+
+        <!-- Step 1 -->
+        <rect x="20" y="30" width="110" height="60" rx="6" fill="#0a1520" stroke="#1e3050"/>
+        <text x="75" y="52" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">1. Hasta adı</text>
+        <text x="75" y="64" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">girin</text>
+        <text x="75" y="78" fill="#445566" font-size="8" text-anchor="middle" font-family="monospace">mustafa*</text>
+
+        <line x1="130" y1="60" x2="155" y2="60" stroke="#00e5c8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- Step 2 -->
+        <rect x="155" y="30" width="110" height="60" rx="6" fill="#0a1520" stroke="#1e3050"/>
+        <text x="210" y="52" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">2. Tarih aralığı</text>
+        <text x="210" y="66" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">ve modalite</text>
+        <text x="210" y="78" fill="#445566" font-size="7" text-anchor="middle" font-family="sans-serif">CT · MR · CR …</text>
+
+        <line x1="265" y1="60" x2="290" y2="60" stroke="#00e5c8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- Step 3 -->
+        <rect x="290" y="30" width="110" height="60" rx="6" fill="#1a0a28" stroke="#3a1e50"/>
+        <text x="345" y="54" fill="#a78bfa" font-size="9" text-anchor="middle" font-family="sans-serif">3. SORGULA</text>
+        <text x="345" y="66" fill="#a78bfa" font-size="9" text-anchor="middle" font-family="sans-serif">butonuna bas</text>
+        <text x="345" y="78" fill="#553355" font-size="7" text-anchor="middle" font-family="sans-serif">C-FIND / QIDO-RS</text>
+
+        <line x1="400" y1="60" x2="425" y2="60" stroke="#00e5c8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- Step 4 -->
+        <rect x="425" y="30" width="110" height="60" rx="6" fill="#0a1520" stroke="#1e3050"/>
+        <text x="480" y="52" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">4. Sonuçtan</text>
+        <text x="480" y="64" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">hasta seç</text>
+        <text x="480" y="78" fill="#445566" font-size="8" text-anchor="middle" font-family="monospace">tıkla</text>
+
+        <line x1="535" y1="60" x2="560" y2="60" stroke="#00e5c8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- Step 5 -->
+        <rect x="560" y="30" width="120" height="60" rx="6" fill="#0a2218" stroke="#1e5030"/>
+        <text x="620" y="52" fill="#00c890" font-size="9" text-anchor="middle" font-family="sans-serif">5. ▶ Görüntüle</text>
+        <text x="620" y="64" fill="#00c890" font-size="9" text-anchor="middle" font-family="sans-serif">butonuna bas</text>
+        <text x="620" y="78" fill="#336644" font-size="7" text-anchor="middle" font-family="sans-serif">WADO-RS / C-MOVE</text>
+      </svg>
+      <div class="diagram-caption">Şekil 4 — PACS'tan görüntü sorgulama ve açma akışı</div>
+    </div>
+
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">
+        <strong>CORS Uyarısı:</strong> Tarayıcı güvenlik politikası nedeniyle <code>file://</code> protokolüyle açılan HTML'den PACS'a direkt TCP bağlantısı yapılamaz. PACS sorgulama için <strong>BASLAT.bat → localhost:3000</strong> üzerinden çalıştırın veya PACS'ın DICOMweb/WADO-RS özelliğini etkinleştirin.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 5. ARAÇLAR ══ -->
+  <div class="section" id="araclar">
+    <div class="section-hdr">
+      <div class="section-num">5</div>
+      <h2>Görüntüleme Araçları</h2>
+    </div>
+
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🌓</div>
+        <div class="feat-title">Pencere / Seviye (W/L)</div>
+        <div class="feat-desc">Sol tık + sürükle: yatay → pencere genişliği, dikey → seviye. Kontrast ve parlaklık ayarı.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔍</div>
+        <div class="feat-title">Yakınlaştır</div>
+        <div class="feat-desc">Sol tık + yukarı/aşağı sürükle. Mouse tekerleği ile de zoom yapılabilir.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">✋</div>
+        <div class="feat-title">Kaydır (Pan)</div>
+        <div class="feat-desc">Görüntüyü viewport içinde hareket ettirin. Büyük görüntülerde detay incelemesi için.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">↕</div>
+        <div class="feat-title">Seri Kaydır</div>
+        <div class="feat-desc">Sol tık + yukarı/aşağı sürükle ile serinin farklı kesitlerini gezin. Mouse tekerleği de çalışır.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📏</div>
+        <div class="feat-title">Mesafe Ölçümü</div>
+        <div class="feat-desc">İki nokta arasındaki mesafeyi mm cinsinden gösterir. DICOM pixel spacing verisini kullanır.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📐</div>
+        <div class="feat-title">Açı Ölçümü</div>
+        <div class="feat-desc">Üç nokta tanımlayarak açı ölçer. Omurga ve eklem açısı değerlendirmesi için.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⬜</div>
+        <div class="feat-title">Dikdörtgen ROI</div>
+        <div class="feat-desc">Seçilen alan için HU ortalama, min, max, standart sapma değerleri hesaplanır.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⭕</div>
+        <div class="feat-title">Elips ROI</div>
+        <div class="feat-desc">Oval seçim alanı ile doku analizi. Yuvarlak yapılar için dikdörtgene göre daha hassas.</div>
+      </div>
+    </div>
+
+    <h3>Pencere/Seviye Önayarları (Presets)</h3>
+    <table class="kbd-table">
+      <tr><th>Preset</th><th>Pencere (WW)</th><th>Seviye (WC)</th><th>Kullanım</th></tr>
+      <tr><td>Karın (ABD)</td><td>400</td><td>40</td><td>Batın CT incelemeleri</td></tr>
+      <tr><td>Akciğer (AKC)</td><td>1500</td><td>-600</td><td>Akciğer parankimi</td></tr>
+      <tr><td>Kemik (KEM)</td><td>2000</td><td>400</td><td>Kemik yapıları, kırıklar</td></tr>
+      <tr><td>Beyin (BEY)</td><td>80</td><td>40</td><td>Beyin parankimi, kanama</td></tr>
+      <tr><td>Karaciğer (KAR)</td><td>150</td><td>50</td><td>Karaciğer lezyonları</td></tr>
+      <tr><td>Omurga (OMU)</td><td>600</td><td>300</td><td>Vertebra, disk</td></tr>
+      <tr><td>Mediastinum</td><td>400</td><td>40</td><td>Mediasten yapıları</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 6. KISAYOLLAR ══ -->
+  <div class="section" id="kisayollar">
+    <div class="section-hdr">
+      <div class="section-num purple">6</div>
+      <h2>Klavye Kısayolları</h2>
+    </div>
+
+    <table class="kbd-table">
+      <tr><th>Kısayol</th><th>İşlev</th><th>Kısayol</th><th>İşlev</th></tr>
+      <tr>
+        <td><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">O</kbd></td><td>Dosya Aç</td>
+        <td><kbd class="kbd">W</kbd></td><td>Pencere/Seviye aracı</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">Shift</kbd>+<kbd class="kbd">O</kbd></td><td>Klasör Aç</td>
+        <td><kbd class="kbd">Z</kbd></td><td>Yakınlaştır aracı</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">P</kbd></td><td>Yazdır</td>
+        <td><kbd class="kbd">P</kbd></td><td>Kaydır (Pan) aracı</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">F11</kbd></td><td>Tam Ekran</td>
+        <td><kbd class="kbd">S</kbd></td><td>Seri Kaydır aracı</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">1</kbd></td><td>1×1 Izgara</td>
+        <td><kbd class="kbd">L</kbd></td><td>Mesafe ölçümü</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">2</kbd></td><td>2×1 Izgara</td>
+        <td><kbd class="kbd">A</kbd></td><td>Açı ölçümü</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">4</kbd></td><td>2×2 Izgara</td>
+        <td><kbd class="kbd">R</kbd></td><td>Dikdörtgen ROI</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">I</kbd></td><td>Görüntü Ters Çevir</td>
+        <td><kbd class="kbd">Del</kbd></td><td>Ölçümleri Temizle</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">Space</kbd></td><td>Sonraki kare</td>
+        <td><kbd class="kbd">←</kbd> <kbd class="kbd">→</kbd></td><td>Önceki / Sonraki kare</td>
+      </tr>
+      <tr>
+        <td><kbd class="kbd">Esc</kbd></td><td>Modalları kapat</td>
+        <td>🖱 Tekerlek</td><td>Kare kaydır</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ══ 7. SORUN GİDERME ══ -->
+  <div class="section" id="sorun">
+    <div class="section-hdr">
+      <div class="section-num yellow">7</div>
+      <h2>Sık Karşılaşılan Sorunlar</h2>
+    </div>
+
+    <div class="alert alert-red">
+      <span class="alert-icon">❌</span>
+      <div class="alert-body">
+        <strong>PACS'a ulaşılamıyor / "Sonuç bulunamadı"</strong><br>
+        Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çözüm: <code>BASLAT.bat</code> ile proxy sunucusunu başlatın ve <code>http://localhost:3000</code> adresinden açın.
+      </div>
+    </div>
+
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">
+        <strong>Node.js bulunamadı</strong><br>
+        <code>BASLAT.bat</code> Node.js'i bulamazsa tarayıcıda <code>https://nodejs.org</code> açar. LTS sürümünü indirip kurun, ardından BASLAT.bat'ı tekrar çalıştırın.
+      </div>
+    </div>
+
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">
+        <strong>Görüntü açılmıyor / boş viewport</strong><br>
+        DICOM dosyasının gerçek piksel verisi içerdiğinden emin olun. Bazı PACS sistemlerinde DICOMDIR dosyası ayrı paket gerektirebilir.
+      </div>
+    </div>
+
+    <div class="alert alert-green">
+      <span class="alert-icon">✅</span>
+      <div class="alert-body">
+        <strong>PACS DICOMweb (WADO-RS) Aktifse</strong><br>
+        CORS izni verilmişse proxy gerekmez. HTML dosyasını direkt açıp PACS ayarlarında WADO-RS URL'sini girin: <code>http://[PACS-IP]:[PORT]/wado/rs</code>
+      </div>
+    </div>
+
+    <h3>Sistem Gereksinimleri</h3>
+    <table class="kbd-table">
+      <tr><th>Bileşen</th><th>Minimum</th><th>Önerilen</th></tr>
+      <tr><td>Tarayıcı</td><td>Chrome 90+, Firefox 88+, Edge 90+</td><td>Chrome / Edge güncel</td></tr>
+      <tr><td>RAM</td><td>4 GB</td><td>8 GB (büyük CT serileri için)</td></tr>
+      <tr><td>Node.js (Proxy modu)</td><td>v16+</td><td>v20 LTS</td></tr>
+      <tr><td>Ekran çözünürlüğü</td><td>1280×720</td><td>1920×1080</td></tr>
+      <tr><td>İşletim Sistemi</td><td>Windows 10</td><td>Windows 10/11</td></tr>
+    </table>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  <div>ATİK VİEWER v1.1.0 — Mustafa UYGUR</div>
+  <div style="margin-top:6px;">
+    <a href="https://github.com/CehennemGibiyim/AtikAnaliz">GitHub: CehennemGibiyim/AtikAnaliz</a>
+  </div>
+  <div style="margin-top:10px;color:#334455;font-size:11px;">
+    Tıbbi karar vermek için değil, görüntüleme ve inceleme amaçlıdır.
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,3221 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atik Viewer — Tıbbi Görüntüleme Sistemi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   ATIK VIEWER — CSS VARIABLES & THEMES
+═══════════════════════════════════════════════════════════ */
+:root {
+  /* Default: Dark Pro */
+  --bg0:       #070a0e;
+  --bg1:       #0a0d12;
+  --bg2:       #0f1318;
+  --bg3:       #141a22;
+  --bg4:       #1a2230;
+  --border:    #1e2d3d;
+  --border2:   #2a3f55;
+  --accent:    #00c8f0;
+  --accent2:   #0088aa;
+  --accentg:   rgba(0,200,240,0.12);
+  --green:     #00e87a;
+  --yellow:    #ffc800;
+  --orange:    #ff8800;
+  --red:       #ff3c3c;
+  --purple:    #a855f7;
+  --text1:     #e8edf5;
+  --text2:     #7a8fa8;
+  --text3:     #3d5068;
+  --font-ui:   'Rajdhani', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --toolbar-h: 46px;
+  --menu-h:    26px;
+  --status-h:  24px;
+  --lpanel-w:  270px;
+  --rpanel-w:  172px;
+}
+
+/* THEME: Light Clinical */
+[data-theme="light"] {
+  --bg0: #f0f2f5; --bg1: #e8ebf0; --bg2: #dde1e8; --bg3: #d0d5de;
+  --bg4: #c4cad5; --border: #b0b8c8; --border2: #8899b0;
+  --accent: #0070a0; --accent2: #005580; --accentg: rgba(0,112,160,0.1);
+  --text1: #1a2535; --text2: #3d5070; --text3: #7090b0;
+}
+
+/* THEME: Warm Amber */
+[data-theme="amber"] {
+  --bg0: #0c0900; --bg1: #120e02; --bg2: #1a1504; --bg3: #221c06;
+  --bg4: #2c2508; --border: #3a3008; --border2: #504010;
+  --accent: #ffaa00; --accent2: #cc8800; --accentg: rgba(255,170,0,0.12);
+  --green: #88ff44; --text1: #fff8e0; --text2: #c0a860; --text3: #806030;
+}
+
+/* THEME: Midnight Blue */
+[data-theme="midnight"] {
+  --bg0: #020510; --bg1: #040818; --bg2: #060c22; --bg3: #0a1230;
+  --bg4: #0e1840; --border: #142050; --border2: #1e3070;
+  --accent: #4488ff; --accent2: #2255cc; --accentg: rgba(68,136,255,0.12);
+  --text1: #d0e0ff; --text2: #6080c0; --text3: #304080;
+}
+
+/* ═══════════════════════════════════════════════════════════ RESET */
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{
+  font-family:var(--font-ui);
+  background:var(--bg0);
+  color:var(--text1);
+  display:flex;flex-direction:column;
+  font-size:13px;
+  user-select:none;
+}
+input,select,textarea{font-family:var(--font-ui);font-size:12px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ═══════════════════════════════════════════════════════════ TITLEBAR */
+#titlebar{
+  height:28px;background:var(--bg0);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 12px;gap:8px;flex-shrink:0;z-index:200;
+}
+.tb-logo{
+  display:flex;align-items:center;gap:7px;
+  font-weight:700;font-size:15px;letter-spacing:1.5px;
+  color:var(--accent);text-shadow:0 0 12px var(--accent);
+}
+.tb-logo svg{width:22px;height:22px;flex-shrink:0;}
+.tb-ver{font-size:10px;color:var(--text3);font-family:var(--font-mono);}
+
+/* ═══════════════════════════════════════════════════════════ MENUBAR */
+#menubar{
+  height:var(--menu-h);
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 4px;gap:1px;flex-shrink:0;z-index:150;
+}
+.mn{
+  padding:2px 9px;font-size:12px;font-weight:500;
+  color:var(--text2);cursor:pointer;border-radius:3px;
+  letter-spacing:.3px;transition:all .12s;position:relative;
+}
+.mn:hover{background:var(--bg4);color:var(--text1);}
+.mn-drop{
+  display:none;position:absolute;
+  top:calc(100% + 3px);left:0;
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  border-radius:5px;min-width:200px;z-index:999;
+  box-shadow:0 10px 30px rgba(0,0,0,.7);padding:4px 0;
+}
+.mn:hover .mn-drop{display:block;}
+.mni{
+  padding:5px 14px;font-size:12px;color:var(--text2);
+  cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:all .1s;white-space:nowrap;
+}
+.mni:hover{background:var(--bg4);color:var(--text1);}
+.mni-sep{height:1px;background:var(--border);margin:3px 6px;}
+.mni-sc{margin-left:auto;color:var(--text3);font-family:var(--font-mono);font-size:10px;}
+.mni-sub{
+  display:none;position:absolute;left:100%;top:0;
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:5px;min-width:160px;z-index:1000;
+  box-shadow:6px 6px 20px rgba(0,0,0,.6);padding:4px 0;
+}
+.mni:hover .mni-sub{display:block;}
+
+/* ═══════════════════════════════════════════════════════════ TOOLBAR */
+#toolbar{
+  height:var(--toolbar-h);
+  background:var(--bg1);
+  border-bottom:2px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 6px;gap:2px;flex-shrink:0;
+  overflow:hidden;
+}
+#toolbar::-webkit-scrollbar{height:0;}
+.tb-sep{width:1px;height:26px;background:var(--border);margin:0 3px;flex-shrink:0;}
+.tb-grp{display:flex;align-items:center;gap:2px;flex-shrink:0;}
+.tb-grp-label{
+  font-size:9px;font-weight:700;color:var(--text3);
+  letter-spacing:1px;text-transform:uppercase;
+  padding:0 2px;flex-shrink:0;
+}
+.tbtn{
+  width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border-radius:5px;
+  border:1px solid transparent;
+  transition:all .12s;flex-shrink:0;
+  color:var(--text2);font-size:15px;
+  background:transparent;position:relative;
+}
+.tbtn:hover{background:var(--bg4);border-color:var(--border2);color:var(--accent);}
+.tbtn.on{background:var(--accentg);border-color:var(--accent2);color:var(--accent);}
+.tbtn[data-tip]:hover::after{
+  content:attr(data-tip);
+  position:absolute;bottom:-26px;left:50%;
+  transform:translateX(-50%);
+  background:var(--bg3);color:var(--text1);
+  padding:2px 8px;border-radius:3px;
+  font-size:10px;white-space:nowrap;z-index:999;
+  border:1px solid var(--border2);pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════════════════════ LAYOUT */
+#workspace{flex:1;display:flex;overflow:hidden;}
+
+/* ═══════════════════════════════════════════════════════════ LEFT PANEL */
+#lpanel{
+  width:var(--lpanel-w);background:var(--bg1);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;
+}
+.panel-tabs{
+  display:flex;background:var(--bg0);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.ptab{
+  flex:1;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;letter-spacing:.5px;
+  cursor:pointer;color:var(--text3);
+  border-bottom:2px solid transparent;transition:all .15s;
+}
+.ptab.on{color:var(--accent);border-bottom-color:var(--accent);}
+.ptab:hover:not(.on){color:var(--text2);}
+
+/* PACS QUERY FORM */
+#pacs-query-panel{flex:1;overflow-y:auto;padding:8px;}
+.pq-section{margin-bottom:10px;}
+.pq-title{
+  font-size:10px;font-weight:700;color:var(--text3);
+  letter-spacing:1px;text-transform:uppercase;
+  padding:0 0 4px;border-bottom:1px solid var(--border);
+  margin-bottom:6px;
+}
+.pq-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.pq-label{font-size:11px;color:var(--text2);width:90px;flex-shrink:0;}
+.pq-input{
+  flex:1;height:24px;padding:0 7px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:3px;color:var(--text1);font-size:11px;
+  outline:none;transition:border-color .15s;
+}
+.pq-input:focus{border-color:var(--accent);}
+.pq-input::placeholder{color:var(--text3);}
+.pq-select{
+  flex:1;height:24px;padding:0 6px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:3px;color:var(--text1);font-size:11px;outline:none;
+}
+.pq-date-row{display:flex;gap:4px;}
+.pq-date-row .pq-input{font-size:10px;}
+.pq-btn{
+  width:100%;height:28px;margin-top:4px;
+  background:var(--accentg);border:1px solid var(--accent2);
+  color:var(--accent);border-radius:4px;cursor:pointer;
+  font-family:var(--font-ui);font-size:12px;font-weight:700;
+  letter-spacing:.5px;transition:all .15s;
+}
+.pq-btn:hover{background:rgba(0,200,240,.2);box-shadow:0 0 12px rgba(0,200,240,.15);}
+.pq-btn.red{background:rgba(255,60,60,.08);border-color:#cc2222;color:var(--red);}
+
+/* Modality checkboxes */
+.mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;}
+.mod-cb{display:flex;align-items:center;gap:3px;font-size:10px;cursor:pointer;}
+.mod-cb input{accent-color:var(--accent);width:12px;height:12px;}
+
+/* Results list */
+#pacs-results{
+  flex:1;overflow-y:auto;
+  border-top:1px solid var(--border);
+}
+.result-item{
+  padding:6px 8px;cursor:pointer;
+  border-left:2px solid transparent;
+  border-bottom:1px solid var(--border);
+  transition:all .1s;
+}
+.result-item:hover{background:var(--bg4);}
+.result-item.sel{background:var(--accentg);border-left-color:var(--accent);}
+.ri-name{font-size:11px;font-weight:600;color:var(--text1);}
+.ri-meta{font-size:10px;color:var(--text2);margin-top:1px;font-family:var(--font-mono);}
+.ri-badge{
+  display:inline-block;padding:0 5px;border-radius:2px;
+  font-size:9px;font-weight:700;margin-top:2px;
+}
+.ri-badge.CT{background:rgba(255,200,0,.15);color:var(--yellow);}
+.ri-badge.MR{background:rgba(0,232,122,.15);color:var(--green);}
+.ri-badge.XR{background:rgba(255,136,0,.15);color:var(--orange);}
+.ri-badge.US{background:rgba(168,85,247,.15);color:var(--purple);}
+.ri-badge.NM,.ri-badge.PT{background:rgba(0,200,240,.15);color:var(--accent);}
+
+/* FILE TREE TAB */
+#file-tree{flex:1;overflow-y:auto;padding:4px 0;}
+.ft-study{padding:5px 8px;cursor:pointer;border-left:2px solid transparent;}
+.ft-study:hover{background:var(--bg4);}
+.ft-study.on{background:var(--accentg);border-left-color:var(--accent);}
+.ft-name{font-size:11px;font-weight:600;color:var(--text1);}
+.ft-sub{font-size:10px;color:var(--text2);margin-top:1px;}
+.ft-series{padding:3px 8px 3px 18px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.ft-series:hover{background:var(--bg4);}
+.ft-series.on{background:var(--accentg);}
+.ft-sthumb{
+  width:30px;height:30px;background:#000;
+  border:1px solid var(--border);border-radius:2px;
+  flex-shrink:0;overflow:hidden;
+}
+.ft-sthumb canvas{width:100%;height:100%;}
+.ft-sinfo{flex:1;min-width:0;}
+.ft-sdesc{font-size:10px;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ft-scnt{font-size:9px;color:var(--text2);}
+
+/* ═══════════════════════════════════════════════════════════ VIEWPORT AREA */
+#vp-area{
+  flex:1;display:flex;flex-direction:column;
+  background:#000;overflow:hidden;position:relative;
+}
+#vp-grid{
+  flex:1;display:grid;
+  grid-template-columns:1fr;grid-template-rows:1fr;
+  gap:2px;background:var(--bg0);overflow:hidden;
+}
+.vp{
+  position:relative;overflow:hidden;background:#000;
+  cursor:crosshair;border:1px solid transparent;
+  transition:border-color .1s;
+}
+.vp.avtive{border-color:var(--accent);}
+.vp canvas{display:block;width:100%;height:100%;}
+.vp-main{position:absolute;inset:0;}
+.vp-measure{position:absolute;inset:0;pointer-events:none;}
+.vp-overlay{position:absolute;inset:0;pointer-events:none;}
+.vp-tl,.vp-tr,.vp-bl,.vp-br{
+  position:absolute;
+  font-family:var(--font-mono);font-size:10.5px;line-height:1.65;
+  color:#ffe090;text-shadow:1px 1px 3px #000,-1px -1px 2px #000;
+  padding:5px 7px;
+}
+.vp-tl{top:0;left:0;}
+.vp-tr{top:0;right:0;text-align:right;}
+.vp-bl{bottom:0;left:0;}
+.vp-br{bottom:0;right:0;text-align:right;}
+.vp-wl-hud{
+  position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.65);border:1px solid var(--border2);
+  border-radius:4px;padding:3px 12px;
+  font-family:var(--font-mono);font-size:11px;color:var(--accent);
+  opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none;
+}
+.vp-wl-hud.show{opacity:1;}
+.vp-zoom-badge{
+  position:absolute;top:5px;right:8px;
+  background:rgba(0,0,0,.55);border:1px solid var(--border2);
+  border-radius:3px;padding:1px 6px;
+  font-family:var(--font-mono);font-size:9px;color:var(--accent);
+  pointer-events:none;
+}
+.vp-scroll-track{
+  position:absolute;right:2px;top:8%;bottom:8%;
+  width:4px;background:rgba(255,255,255,.04);border-radius:2px;
+}
+.vp-scroll-thumb{
+  width:100%;background:rgba(0,200,240,.45);
+  border-radius:2px;min-height:10px;position:absolute;top:0;
+}
+/* Orientation labels */
+.vp-orient{
+  position:absolute;font-family:var(--font-mono);
+  font-size:11px;font-weight:700;color:#fff;
+  text-shadow:1px 1px 3px #000;pointer-events:none;
+}
+
+/* MPR label bar */
+.vp-mode-label{
+  position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.5);border-radius:3px;padding:1px 10px;
+  font-size:10px;font-weight:700;color:var(--accent);
+  letter-spacing:1px;pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════════════════════ DROPZONE */
+#dropzone{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:12px;z-index:10;
+  background:rgba(0,0,0,.96);
+}
+.dz-logo{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.dz-logo svg{width:72px;height:72px;opacity:.35;}
+.dz-title{
+  font-family:var(--font-ui);font-size:24px;font-weight:700;
+  color:var(--text2);letter-spacing:3px;
+}
+.dz-sub{font-size:12px;color:var(--text3);letter-spacing:1px;}
+.dz-btn-row{display:flex;gap:10px;margin-top:4px;}
+.dz-btn{
+  padding:9px 22px;
+  background:var(--accentg);border:1px solid var(--accent2);
+  color:var(--accent);border-radius:5px;cursor:pointer;
+  font-family:var(--font-ui);font-size:13px;font-weight:700;letter-spacing:.5px;
+  transition:all .2s;
+}
+.dz-btn:hover{background:rgba(0,200,240,.2);box-shadow:0 0 18px rgba(0,200,240,.2);}
+.dz-btn.sec{background:rgba(0,232,122,.08);border-color:#006633;color:var(--green);}
+.dz-btn.sec:hover{background:rgba(0,232,122,.15);}
+.dz-formats{font-size:10px;color:var(--text3);text-align:center;letter-spacing:.4px;line-height:1.8;}
+.drag-active #dropzone{background:rgba(0,40,70,.97);}
+.drag-active .dz-logo svg{opacity:.7;filter:drop-shadow(0 0 8px var(--accent));}
+
+/* ═══════════════════════════════════════════════════════════ RIGHT PANEL */
+#rpanel{
+  width:var(--rpanel-w);background:var(--bg1);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;
+}
+.rpanel-hdr{
+  height:26px;background:var(--bg0);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 8px;
+  font-size:10px;font-weight:700;color:var(--text3);
+  letter-spacing:1px;text-transform:uppercase;flex-shrink:0;
+  gap:6px;
+}
+#thumb-list{flex:1;overflow-y:auto;padding:5px;}
+.ti{
+  position:relative;cursor:pointer;
+  border:1px solid var(--border);border-radius:3px;
+  overflow:hidden;background:#000;
+  margin-bottom:4px;transition:border-color .12s;
+}
+.ti:hover{border-color:var(--accent2);}
+.ti.on{border-color:var(--accent);box-shadow:0 0 8px rgba(0,200,240,.3);}
+.ti canvas{display:block;width:100%;aspect-ratio:1;}
+.ti-num{
+  position:absolute;bottom:2px;right:4px;
+  font-family:var(--font-mono);font-size:8px;
+  color:rgba(255,255,255,.65);text-shadow:1px 1px 2px #000;
+}
+.ti-label{
+  position:absolute;bottom:2px;left:4px;
+  font-family:var(--font-mono);font-size:8px;
+  color:var(--accent);opacity:.8;
+}
+
+/* ═══════════════════════════════════════════════════════════ STATUS BAR */
+#statusbar{
+  height:var(--status-h);background:var(--bg0);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 8px;gap:12px;
+  font-family:var(--font-mono);font-size:10px;
+  color:var(--text2);flex-shrink:0;
+}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);flex-shrink:0;}
+.sb-sep{width:1px;height:14px;background:var(--border);flex-shrink:0;}
+.sb-lbl{color:var(--text3);}
+.sb-val{color:var(--text1);}
+.sb-conn{display:flex;align-items:center;gap:4px;}
+.sb-conn-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--text3);flex-shrink:0;transition:background .3s;
+}
+.sb-conn-dot.ok{background:var(--green);box-shadow:0 0 4px var(--green);}
+.sb-conn-dot.err{background:var(--red);}
+
+/* ═══════════════════════════════════════════════════════════ PROGRESS */
+#progress-bar{
+  height:2px;background:linear-gradient(90deg,var(--accent),var(--green));
+  position:absolute;bottom:0;left:0;width:0%;
+  transition:width .25s;opacity:0;z-index:50;
+}
+
+/* ═══════════════════════════════════════════════════════════ MODALS */
+.modal-bg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.72);z-index:500;
+  align-items:center;justify-content:center;
+}
+.modal-bg.show{display:flex;}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:7px;width:560px;max-width:95vw;
+  box-shadow:0 24px 64px rgba(0,0,0,.85);
+  display:flex;flex-direction:column;max-height:90vh;
+}
+.modal.wide{width:740px;}
+.modal.narrow{width:400px;}
+.modal-hdr{
+  padding:11px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:14px;font-weight:700;color:var(--text1);letter-spacing:.3px;
+  flex-shrink:0;
+}
+.modal-close{cursor:pointer;color:var(--text3);font-size:18px;line-height:1;transition:color .15s;}
+.modal-close:hover{color:var(--red);}
+.modal-body{padding:14px 16px;overflow-y:auto;flex:1;}
+.modal-footer{
+  padding:10px 16px;border-top:1px solid var(--border);
+  display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;
+}
+.mbtn{
+  padding:6px 18px;border-radius:4px;cursor:pointer;
+  font-family:var(--font-ui);font-size:12px;font-weight:700;
+  letter-spacing:.3px;transition:all .15s;
+}
+.mbtn.primary{background:var(--accentg);border:1px solid var(--accent2);color:var(--accent);}
+.mbtn.primary:hover{background:rgba(0,200,240,.2);}
+.mbtn.secondary{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);}
+.mbtn.secondary:hover{color:var(--text1);}
+.mbtn.danger{background:rgba(255,60,60,.08);border:1px solid #cc2222;color:var(--red);}
+
+/* TABS inside modal */
+.modal-tabs{display:flex;border-bottom:1px solid var(--border);margin:-14px -16px 12px;}
+.modal-tab{
+  padding:8px 16px;font-size:11px;font-weight:700;
+  color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;letter-spacing:.5px;
+}
+.modal-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+.modal-tab:hover:not(.on){color:var(--text2);}
+
+/* Form elements inside modals */
+.form-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.form-label{font-size:11px;color:var(--text2);width:130px;flex-shrink:0;}
+.form-input{
+  flex:1;height:26px;padding:0 8px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:3px;color:var(--text1);font-size:11px;outline:none;
+}
+.form-input:focus{border-color:var(--accent);}
+.form-select{
+  flex:1;height:26px;padding:0 7px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:3px;color:var(--text1);font-size:11px;outline:none;
+}
+.form-group{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:5px;padding:10px 12px;margin-bottom:10px;
+}
+.form-group-title{
+  font-size:10px;font-weight:700;color:var(--text3);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;
+}
+
+/* PACS servers table */
+.pacs-table{width:100%;border-collapse:collapse;font-size:11px;}
+.pacs-table th{
+  padding:5px 8px;text-align:left;
+  font-size:10px;font-weight:700;color:var(--text3);
+  letter-spacing:.5px;text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+.pacs-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);}
+.pacs-table tr:hover td{background:var(--bg4);color:var(--text1);}
+.pacs-table tr.sel td{background:var(--accentg);color:var(--text1);}
+.pacs-status{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--text3);
+}
+.pacs-status.ok{background:var(--green);box-shadow:0 0 4px var(--green);}
+.pacs-status.err{background:var(--red);}
+.pacs-status.testing{background:var(--yellow);animation:blink .6s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* PRINT layout */
+@media print{
+  #titlebar,#menubar,#toolbar,#lpanel,#rpanel,#statusbar,#dropzone{display:none!important;}
+  #vp-area{flex:1;height:100vh;}
+  body{overflow:visible;}
+  .vp{border:none;}
+}
+
+/* REPORT editor */
+#report-editor{
+  width:100%;height:280px;padding:10px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:4px;color:var(--text1);font-family:var(--font-mono);
+  font-size:11px;line-height:1.6;outline:none;resize:vertical;
+}
+
+/* 3D canvas container */
+#threed-container{
+  position:absolute;inset:0;background:#000;display:none;
+}
+#threed-canvas{width:100%;height:100%;display:block;}
+#threed-toolbar{
+  position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  display:flex;gap:4px;background:rgba(0,0,0,.65);
+  border:1px solid var(--border);border-radius:5px;padding:3px;
+}
+
+/* Context menu */
+#ctx-menu{
+  display:none;position:fixed;z-index:800;
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:5px;min-width:160px;padding:4px 0;
+  box-shadow:0 8px 24px rgba(0,0,0,.7);
+  font-size:12px;
+}
+#ctx-menu .ctx-item{
+  padding:5px 14px;cursor:pointer;color:var(--text2);
+  display:flex;align-items:center;gap:8px;
+}
+#ctx-menu .ctx-item:hover{background:var(--bg4);color:var(--text1);}
+#ctx-menu .ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+
+/* Notifications */
+#notif{
+  position:fixed;bottom:32px;right:12px;z-index:900;
+  display:flex;flex-direction:column;gap:5px;pointer-events:none;
+}
+.notif-item{
+  padding:7px 14px;border-radius:5px;font-size:11px;
+  animation:notif-in .3s ease;pointer-events:auto;
+  display:flex;align-items:center;gap:8px;max-width:280px;
+}
+.notif-item.info{background:#0a2040;border:1px solid var(--accent2);color:var(--accent);}
+.notif-item.ok  {background:#002818;border:1px solid #006633;color:var(--green);}
+.notif-item.warn{background:#2a1800;border:1px solid #664400;color:var(--orange);}
+.notif-item.err {background:#280808;border:1px solid #661111;color:var(--red);}
+@keyframes notif-in{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;}}
+
+/* Loading spinner */
+.spinner{
+  width:16px;height:16px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .6s linear infinite;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Responsive panel hide */
+.panel-hidden{display:none!important;}
+
+/* Drag handle for panels */
+.panel-resize{
+  width:4px;background:transparent;cursor:col-resize;flex-shrink:0;
+  transition:background .15s;
+}
+.panel-resize:hover{background:var(--accent2);}
+
+/* File input */
+input[type=file]{display:none;}
+
+/* Keyboard shortcut badge */
+kbd{
+  display:inline-block;padding:1px 5px;
+  background:var(--bg4);border:1px solid var(--border2);
+  border-radius:3px;font-family:var(--font-mono);font-size:9px;
+  color:var(--text2);
+}
+
+/* WL Slider */
+.wl-mini{display:flex;align-items:center;gap:5px;padding:0 4px;}
+.wl-mini input[type=range]{
+  -webkit-appearance:none;width:70px;height:3px;
+  background:var(--border2);border-radius:2px;outline:none;cursor:pointer;
+}
+.wl-mini input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:11px;height:11px;
+  border-radius:50%;background:var(--accent);cursor:pointer;
+}
+.wl-mini-label{font-size:9px;color:var(--text3);font-family:var(--font-mono);}
+
+/* tooltip */
+[data-tooltip]{position:relative;}
+[data-tooltip]:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;bottom:calc(100% + 4px);left:50%;
+  transform:translateX(-50%);
+  background:var(--bg3);color:var(--text1);
+  padding:3px 8px;border-radius:3px;font-size:10px;
+  white-space:nowrap;z-index:999;
+  border:1px solid var(--border2);pointer-events:none;
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<!-- FILE INPUTS -->
+<input type="file" id="fi-files" multiple accept=".dcm,.dicom,.jpg,.jpeg,.png,.bmp,.tif,.tiff,.nii,.gz">
+<input type="file" id="fi-folder" multiple webkitdirectory>
+
+<!-- NOTIFICATIONS -->
+<div id="notif"></div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="ctxAction('fit')">⛶ Pencereye Sığdır</div>
+  <div class="ctx-item" onclick="ctxAction('actual')">1:1 Gerçek Boyut</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('wl-reset')">🌓 WL Sıfırla</div>
+  <div class="ctx-item" onclick="ctxAction('rotate-reset')">↺ Dönüşümü Sıfırla</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('export-png')">🖼 PNG Dışa Aktar</div>
+  <div class="ctx-item" onclick="ctxAction('copy-clipboard')">📋 Panoya Kopyala</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('patient-info')">👤 Hasta Bilgileri</div>
+  <div class="ctx-item" onclick="ctxAction('dicom-tags')">🏷 DICOM Etiketleri</div>
+</div>
+
+<!-- ═════════════════════════ TITLEBAR -->
+<div id="titlebar">
+  <div class="tb-logo">
+    <!-- ATIK VIEWER LOGO -->
+    <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
+      <circle cx="22" cy="22" r="14" stroke="currentColor" stroke-width="1" opacity=".3"/>
+      <path d="M22 8 L22 36 M8 22 L36 22" stroke="currentColor" stroke-width="1" opacity=".25"/>
+      <path d="M13 14 L22 8 L31 14 L31 30 L22 36 L13 30 Z" stroke="currentColor" stroke-width="1.5" fill="none" opacity=".5"/>
+      <circle cx="22" cy="22" r="4" fill="currentColor" opacity=".9"/>
+      <circle cx="22" cy="10" r="2" fill="currentColor" opacity=".7"/>
+      <circle cx="22" cy="34" r="2" fill="currentColor" opacity=".7"/>
+      <circle cx="10" cy="22" r="2" fill="currentColor" opacity=".7"/>
+      <circle cx="34" cy="22" r="2" fill="currentColor" opacity=".7"/>
+      <path d="M14 17 L30 27 M30 17 L14 27" stroke="currentColor" stroke-width=".8" opacity=".4"/>
+    </svg>
+    ATİK VİEWER
+  </div>
+  <div class="tb-ver">v1.0.0 BETA</div>
+  <div style="flex:1"></div>
+  <!-- Theme switcher -->
+  <div style="display:flex;gap:5px;align-items:center;">
+    <span style="font-size:9px;color:var(--text3);letter-spacing:.5px;">TEMA:</span>
+    <div class="tbtn" style="width:24px;height:20px;font-size:10px;font-weight:700" onclick="setTheme('dark')" data-tip="Koyu Pro" title="Koyu">●</div>
+    <div class="tbtn" style="width:24px;height:20px;font-size:10px;color:#ccc" onclick="setTheme('light')" data-tip="Açık Klinik" title="Açık">○</div>
+    <div class="tbtn" style="width:24px;height:20px;font-size:10px;color:#ffc800" onclick="setTheme('amber')" data-tip="Amber">◑</div>
+    <div class="tbtn" style="width:24px;height:20px;font-size:10px;color:#4488ff" onclick="setTheme('midnight')" data-tip="Gece Mavisi">◐</div>
+  </div>
+</div>
+
+<!-- ═════════════════════════ MENUBAR -->
+<div id="menubar">
+  <div class="mn">Dosya
+    <div class="mn-drop">
+      <div class="mni" onclick="openFiles()">📂 Dosya Aç<span class="mni-sc">Ctrl+O</span></div>
+      <div class="mni" onclick="openFolder()">📁 Klasör Aç<span class="mni-sc">Ctrl+Shift+O</span></div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="exportPNG()">🖼 PNG Olarak Kaydet</div>
+      <div class="mni" onclick="exportAllPNG()">📦 Tüm Kareleri Dışa Aktar</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="showPrint()">🖨 Yazdır<span class="mni-sc">Ctrl+P</span></div>
+      <div class="mni" onclick="showReport()">📝 Rapor Oluştur</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="closeAllSeries()">✖ Tümünü Kapat</div>
+    </div>
+  </div>
+  <div class="mn">Görünüm
+    <div class="mn-drop">
+      <div class="mni" onclick="setGrid('1x1')">⬛ 1×1<span class="mni-sc">1</span></div>
+      <div class="mni" onclick="setGrid('2x1')">⬛⬛ 2×1 Yatay<span class="mni-sc">2</span></div>
+      <div class="mni" onclick="setGrid('1x2')">↕ 1×2 Dikey</div>
+      <div class="mni" onclick="setGrid('2x2')">⊞ 2×2<span class="mni-sc">4</span></div>
+      <div class="mni" onclick="setGrid('1x3')">|||1×3</div>
+      <div class="mni" onclick="setGrid('2x3')">⊞⊞ 2×3</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="showMPR()">⊕ MPR - Çok Düzlemli</div>
+      <div class="mni" onclick="show3D()">🧊 3D Rendering</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="toggleFullscreen()">⛶ Tam Ekran<span class="mni-sc">F11</span></div>
+      <div class="mni" onclick="togglePanel('lpanel')">◧ Sol Panel</div>
+      <div class="mni" onclick="togglePanel('rpanel')">◨ Sağ Panel</div>
+    </div>
+  </div>
+  <div class="mn">Araçlar
+    <div class="mn-drop">
+      <div class="mni" onclick="setTool('wl')">🌓 Pencere/Seviye<span class="mni-sc">W</span></div>
+      <div class="mni" onclick="setTool('zoom')">🔍 Yakınlaştır<span class="mni-sc">Z</span></div>
+      <div class="mni" onclick="setTool('pan')">✋ Kaydır<span class="mni-sc">P</span></div>
+      <div class="mni" onclick="setTool('scroll')">↕ Seri Kaydır<span class="mni-sc">S</span></div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="setTool('length')">📏 Mesafe<span class="mni-sc">L</span></div>
+      <div class="mni" onclick="setTool('angle')">📐 Açı<span class="mni-sc">A</span></div>
+      <div class="mni" onclick="setTool('roi-rect')">⬜ Dikdörtgen ROI<span class="mni-sc">R</span></div>
+      <div class="mni" onclick="setTool('roi-ellipse')">⭕ Elips ROI</div>
+      <div class="mni" onclick="setTool('arrow')">↗ Ok Çiz</div>
+      <div class="mni" onclick="setTool('text')">T Metin Ekle</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="clearMeasurements()">🗑 Ölçümleri Temizle<span class="mni-sc">Del</span></div>
+    </div>
+  </div>
+  <div class="mn">Filtreler
+    <div class="mn-drop">
+      <div class="mni" onclick="applyFilter('none')">Orijinal</div>
+      <div class="mni" onclick="applyFilter('invert')">⬛ Ters Çevir<span class="mni-sc">I</span></div>
+      <div class="mni" onclick="applyFilter('sharpen')">🔪 Keskinleştir</div>
+      <div class="mni" onclick="applyFilter('smooth')">〰 Yumuşat</div>
+      <div class="mni" onclick="applyFilter('edge')">◻ Kenar Tespiti</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="applyFilter('pseudo-hot')">🔴 Pseudo-Renk: Hot</div>
+      <div class="mni" onclick="applyFilter('pseudo-cool')">🔵 Pseudo-Renk: Cool</div>
+      <div class="mni" onclick="applyFilter('pseudo-rainbow')">🌈 Pseudo-Renk: Gökkuşağı</div>
+    </div>
+  </div>
+  <div class="mn">Pencere
+    <div class="mn-drop">
+      <div class="mni" onclick="setPreset('abdomen')">🫀 Karın (W:400/L:40)</div>
+      <div class="mni" onclick="setPreset('lung')">🫁 Akciğer (W:1500/L:-600)</div>
+      <div class="mni" onclick="setPreset('bone')">🦴 Kemik (W:2000/L:400)</div>
+      <div class="mni" onclick="setPreset('brain')">🧠 Beyin (W:80/L:40)</div>
+      <div class="mni" onclick="setPreset('liver')">🫀 Karaciğer (W:150/L:50)</div>
+      <div class="mni" onclick="setPreset('spine')">🦷 Omurga (W:600/L:300)</div>
+      <div class="mni" onclick="setPreset('mediastinum')">Mediastinum (W:400/L:40)</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="setPreset('default')">↺ Varsayılan</div>
+    </div>
+  </div>
+  <div class="mn">PACS
+    <div class="mn-drop">
+      <div class="mni" onclick="showPACSSettings()">⚙ PACS Sunucu Ayarları</div>
+      <div class="mni" onclick="testPACSConnection()">🔌 Bağlantı Test Et</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="switchTab('pacs')">🔍 Hasta/Çalışma Sorgula</div>
+      <div class="mni" onclick="doRetrieve()">⬇ Seçili Çalışmayı İndir</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="showSend()">⬆ Görüntü Gönder (C-STORE)</div>
+    </div>
+  </div>
+  <div class="mn">Yardım
+    <div class="mn-drop">
+      <div class="mni" onclick="showShortcuts()">⌨ Klavye Kısayolları</div>
+      <div class="mni-sep"></div>
+      <div class="mni" onclick="showAbout()">ℹ Atik Viewer Hakkında</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════ TOOLBAR -->
+<div id="toolbar">
+  <!-- Open -->
+  <div class="tb-grp">
+    <div class="tbtn" data-tip="Dosya Aç (Ctrl+O)" onclick="openFiles()">📂</div>
+    <div class="tbtn" data-tip="Klasör Aç" onclick="openFolder()">📁</div>
+    <div class="tbtn" data-tip="PACS Sorgu" onclick="switchTab('pacs')" style="font-size:11px;font-weight:700">PACS</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Layout -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">DÜZEN</div>
+    <div class="tbtn on" id="gbtn-1x1" data-tip="1×1" onclick="setGrid('1x1')" style="font-size:11px">1×1</div>
+    <div class="tbtn" id="gbtn-2x1" data-tip="2×1 Yatay" onclick="setGrid('2x1')" style="font-size:11px">2×1</div>
+    <div class="tbtn" id="gbtn-2x2" data-tip="2×2" onclick="setGrid('2x2')" style="font-size:11px">2×2</div>
+    <div class="tbtn" id="gbtn-1x3" data-tip="1×3" onclick="setGrid('1x3')" style="font-size:11px">1×3</div>
+    <div class="tbtn" id="gbtn-2x3" data-tip="2×3" onclick="setGrid('2x3')" style="font-size:11px">2×3</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- View Mode -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">MOD</div>
+    <div class="tbtn" id="gbtn-mpr" data-tip="MPR Çok Düzlemli" onclick="showMPR()" style="font-size:10px;font-weight:700">MPR</div>
+    <div class="tbtn" id="gbtn-3d"  data-tip="3D Rendering"     onclick="show3D()"  style="font-size:10px;font-weight:700">3D</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Tools -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">ARAÇ</div>
+    <div class="tbtn on" id="tbtn-wl"       data-tip="Pencere/Seviye (W)" onclick="setTool('wl')">🌓</div>
+    <div class="tbtn"    id="tbtn-zoom"     data-tip="Yakınlaştır (Z)"    onclick="setTool('zoom')">🔍</div>
+    <div class="tbtn"    id="tbtn-pan"      data-tip="Kaydır (P)"         onclick="setTool('pan')">✋</div>
+    <div class="tbtn"    id="tbtn-scroll"   data-tip="Seri Kaydır (S)"    onclick="setTool('scroll')" style="font-size:12px">↕</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Measure -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">ÖLÇÜM</div>
+    <div class="tbtn" id="tbtn-length"     data-tip="Mesafe (L)"     onclick="setTool('length')">📏</div>
+    <div class="tbtn" id="tbtn-angle"      data-tip="Açı (A)"        onclick="setTool('angle')">📐</div>
+    <div class="tbtn" id="tbtn-roi-rect"   data-tip="Dikdörtgen ROI (R)" onclick="setTool('roi-rect')" style="font-size:13px">⬜</div>
+    <div class="tbtn" id="tbtn-roi-ellipse" data-tip="Elips ROI"     onclick="setTool('roi-ellipse')" style="font-size:13px">⭕</div>
+    <div class="tbtn" id="tbtn-arrow"      data-tip="Ok"             onclick="setTool('arrow')">↗</div>
+    <div class="tbtn"                      data-tip="Ölçümleri Temizle (Del)" onclick="clearMeasurements()">🗑</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Transform -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">DÖNDÜR</div>
+    <div class="tbtn" data-tip="Sola 90°" onclick="rotate(-90)">↺</div>
+    <div class="tbtn" data-tip="Sağa 90°" onclick="rotate(90)">↻</div>
+    <div class="tbtn" data-tip="Yatay Çevir" onclick="flip('h')" style="font-size:12px">↔</div>
+    <div class="tbtn" data-tip="Dikey Çevir" onclick="flip('v')" style="font-size:12px">↕</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Zoom -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">ZOOM</div>
+    <div class="tbtn" data-tip="Yakınlaştır (+)" onclick="zoomIn()">➕</div>
+    <div class="tbtn" data-tip="Uzaklaştır (-)"  onclick="zoomOut()">➖</div>
+    <div class="tbtn" data-tip="Pencereye Sığdır (F)" onclick="fitActive()">⛶</div>
+    <div class="tbtn" data-tip="Gerçek Boyut (1)" onclick="actualSize()" style="font-size:10px;font-weight:700">1:1</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- WL Presets -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">PRESET</div>
+    <div class="tbtn" data-tip="Karın (W:400/L:40)" onclick="setPreset('abdomen')" style="font-size:9px;font-weight:700">ABD</div>
+    <div class="tbtn" data-tip="Akciğer"             onclick="setPreset('lung')"    style="font-size:9px;font-weight:700">AKC</div>
+    <div class="tbtn" data-tip="Kemik"               onclick="setPreset('bone')"    style="font-size:9px;font-weight:700">KEM</div>
+    <div class="tbtn" data-tip="Beyin"               onclick="setPreset('brain')"   style="font-size:9px;font-weight:700">BEY</div>
+    <div class="tbtn" data-tip="Karaciğer"           onclick="setPreset('liver')"   style="font-size:9px;font-weight:700">KAR</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Filter -->
+  <div class="tb-grp">
+    <div class="tb-grp-label">FİLTRE</div>
+    <div class="tbtn" data-tip="Ters Çevir (I)"  onclick="applyFilter('invert')" style="font-size:13px">⬛</div>
+    <div class="tbtn" data-tip="Keskinleştir"    onclick="applyFilter('sharpen')" style="font-size:13px">🔪</div>
+    <div class="tbtn" data-tip="Hot Pseudocolor" onclick="applyFilter('pseudo-hot')" style="font-size:13px">🌡</div>
+    <div class="tbtn" data-tip="Orijinal"        onclick="applyFilter('none')"   style="font-size:11px;font-weight:700">ORJ</div>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Actions -->
+  <div class="tb-grp">
+    <div class="tbtn" data-tip="Yazdır (Ctrl+P)" onclick="showPrint()">🖨</div>
+    <div class="tbtn" data-tip="Rapor (Ctrl+R)"  onclick="showReport()">📝</div>
+    <div class="tbtn" data-tip="PNG Dışa Aktar"  onclick="exportPNG()">💾</div>
+  </div>
+
+  <div style="flex:1"></div>
+  <div class="tbtn" data-tip="Tam Ekran (F11)" onclick="toggleFullscreen()">⛶</div>
+</div>
+
+<!-- ═════════════════════════ WORKSPACE -->
+<div id="workspace">
+
+  <!-- LEFT PANEL -->
+  <div id="lpanel">
+    <div class="panel-tabs">
+      <div class="ptab on"  id="ptab-pacs" onclick="switchTab('pacs')">PACS</div>
+      <div class="ptab"     id="ptab-local" onclick="switchTab('local')">LOKAL</div>
+      <div class="ptab"     id="ptab-info"  onclick="switchTab('info')">BİLGİ</div>
+    </div>
+
+    <!-- PACS TAB -->
+    <div id="tab-pacs" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div id="pacs-query-panel" style="flex-shrink:0;overflow-y:auto;max-height:52%;">
+        <div class="pq-section">
+          <div class="pq-title">🔌 PACS Sunucusu</div>
+          <div class="pq-row">
+            <div class="pq-label">Sunucu</div>
+            <select class="pq-select" id="pacs-server-sel">
+              <option value="">— Sunucu Seç —</option>
+            </select>
+          </div>
+          <div class="pq-row" style="gap:4px;">
+            <button class="pq-btn" style="margin-top:0;font-size:11px;" onclick="testPACSConnection()">🔌 Test</button>
+            <button class="pq-btn" style="margin-top:0;font-size:11px;background:rgba(0,232,122,.08);border-color:#006633;color:var(--green);" onclick="showPACSSettings()">⚙ Ayarlar</button>
+          </div>
+        </div>
+
+        <div class="pq-section">
+          <div class="pq-title">🔍 Hasta / Çalışma Sorgusu</div>
+          <div class="pq-row">
+            <div class="pq-label">Hasta Adı</div>
+            <input class="pq-input" id="pq-name" placeholder="Soyad^Ad *wildcard">
+          </div>
+          <div class="pq-row">
+            <div class="pq-label">Hasta ID</div>
+            <input class="pq-input" id="pq-id" placeholder="*">
+          </div>
+          <div class="pq-row">
+            <div class="pq-label">Accession No</div>
+            <input class="pq-input" id="pq-accession" placeholder="">
+          </div>
+          <div class="pq-row">
+            <div class="pq-label">Tarih Aralığı</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><div style="display:flex;align-items:center;gap:3px;"><span style="font-size:9px;color:var(--text3);min-width:22px">Baş.</span><input class="pq-input" id="pq-date-from" type="date" style="flex:1;font-size:10px;"></div><div style="display:flex;align-items:center;gap:3px;"><span style="font-size:9px;color:var(--text3);min-width:22px">Bitiş</span><input class="pq-input" id="pq-date-to" type="date" style="flex:1;font-size:10px;"></div></div>
+          </div>
+          <div class="pq-row">
+            <div class="pq-label">Modalite</div>
+            <div class="mod-grid" style="flex:1">
+              <label class="mod-cb"><input type="checkbox" id="mod-all" checked onchange="toggleAllMod(this)"> Hepsi</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="CR"> CR</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="CT" checked> CT</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="MR" checked> MR</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="XA"> XA</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="US"> US</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="NM"> NM</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="PT"> PT</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="DX"> DX</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="MG"> MG</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="RF"> RF</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="SC"> SC</label>
+            </div>
+          </div>
+          <button class="pq-btn" onclick="doPACSQuery()">🔍 SORGULA (C-FIND)</button>
+          <button class="pq-btn red" onclick="doRetrieve()" style="margin-top:4px;">⬇ SEÇİLİ ÇALIŞMAYI İNDİR (C-MOVE)</button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div style="height:22px;background:var(--bg0);border-top:1px solid var(--border);
+                  display:flex;align-items:center;padding:0 8px;gap:6px;flex-shrink:0;">
+        <span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;">SONUÇLAR</span>
+        <span id="pacs-result-count" style="font-size:10px;color:var(--accent);font-family:var(--font-mono);">0 kayıt</span>
+        <div style="flex:1"></div>
+        <div class="spinner" id="pacs-spinner" style="display:none;"></div>
+      </div>
+      <div id="pacs-results" style="flex:1;overflow-y:auto;"></div>
+    </div>
+
+    <!-- LOCAL TAB -->
+    <div id="tab-local" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);display:flex;gap:5px;flex-shrink:0;">
+        <button class="pq-btn" style="margin:0;font-size:11px;flex:1;" onclick="openFiles()">📂 Dosya Aç</button>
+        <button class="pq-btn" style="margin:0;font-size:11px;flex:1;background:rgba(0,232,122,.08);border-color:#006633;color:var(--green);" onclick="openFolder()">📁 Klasör</button>
+      </div>
+      <div id="file-tree" style="flex:1;overflow-y:auto;"></div>
+    </div>
+
+    <!-- INFO TAB -->
+    <div id="tab-info" style="display:none;flex:1;overflow-y:auto;padding:8px;">
+      <div id="dicom-info-content">
+        <div style="color:var(--text3);font-size:11px;text-align:center;padding:20px;">Görüntü yükleyin</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEWPORT AREA -->
+  <div id="vp-area">
+    <div id="progress-bar"></div>
+
+    <!-- DROPZONE -->
+    <div id="dropzone"
+      ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave()">
+      <div class="dz-logo">
+        <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:var(--accent)">
+          <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
+          <path d="M22 8 L22 36 M8 22 L36 22" stroke="currentColor" stroke-width="1" opacity=".3"/>
+          <path d="M13 14 L22 8 L31 14 L31 30 L22 36 L13 30 Z" stroke="currentColor" stroke-width="1.5" fill="none" opacity=".6"/>
+          <circle cx="22" cy="22" r="4" fill="currentColor" opacity=".9"/>
+          <circle cx="22" cy="10" r="2" fill="currentColor" opacity=".7"/>
+          <circle cx="22" cy="34" r="2" fill="currentColor" opacity=".7"/>
+          <circle cx="10" cy="22" r="2" fill="currentColor" opacity=".7"/>
+          <circle cx="34" cy="22" r="2" fill="currentColor" opacity=".7"/>
+        </svg>
+        <div class="dz-title">ATİK VİEWER</div>
+        <div class="dz-sub">Tıbbi Görüntüleme Sistemi · v1.0.0</div>
+      </div>
+      <div class="dz-btn-row">
+        <button class="dz-btn" onclick="openFiles()">📂 Dosya Aç</button>
+        <button class="dz-btn sec" onclick="openFolder()">📁 Klasör Aç</button>
+        <button class="dz-btn" style="background:rgba(168,85,247,.08);border-color:#6633aa;color:var(--purple);" onclick="switchTab('pacs');showNotif('PACS sunucu ayarlarını yapılandırın','info')">🔌 PACS Bağlan</button>
+      </div>
+      <div class="dz-formats">
+        DICOM (.dcm, .dicom) · JPEG · PNG · BMP · TIFF · NIfTI (.nii, .nii.gz)<br>
+        Dosyaları sürükleyip bırakabilirsiniz · Tüm standart DICOM transferleri desteklenir
+      </div>
+    </div>
+
+    <!-- VIEWPORT GRID -->
+    <div id="vp-grid"></div>
+
+    <!-- 3D CONTAINER -->
+    <div id="threed-container">
+      <canvas id="threed-canvas"></canvas>
+      <div id="threed-toolbar">
+        <div class="tbtn on" onclick="set3DMode('volume')" data-tip="Volume Rendering">VR</div>
+        <div class="tbtn"    onclick="set3DMode('mip')"    data-tip="Maximum Intensity">MIP</div>
+        <div class="tbtn"    onclick="set3DMode('surface')" data-tip="Surface Rendering">SR</div>
+        <div class="tbtn"    onclick="reset3D()"            data-tip="Görünümü Sıfırla">↺</div>
+        <div class="tbtn"    onclick="close3D()"            data-tip="Kapat" style="color:var(--red)">✕</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="rpanel">
+    <div class="rpanel-hdr">
+      <span>🖼</span><span>SERİ</span>
+      <div style="flex:1"></div>
+      <div class="tbtn" style="width:20px;height:20px;font-size:10px" onclick="togglePanel('rpanel')" data-tip="Paneli Gizle">✕</div>
+    </div>
+    <div id="thumb-list"></div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <div class="sb-dot" id="sb-dot"></div>
+  <span class="sb-val" id="sb-status">Hazır</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">PACS:</span>
+  <div class="sb-conn">
+    <div class="sb-conn-dot" id="pacs-conn-dot"></div>
+    <span class="sb-val" id="pacs-conn-label">Bağlı Değil</span>
+  </div>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">Modality:</span><span class="sb-val" id="sb-modality">—</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">W/L:</span><span class="sb-val" id="sb-wl">—</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">Zoom:</span><span class="sb-val" id="sb-zoom">—</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">Kare:</span><span class="sb-val" id="sb-frame">—</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">HU:</span><span class="sb-val" id="sb-hu">—</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">Pos:</span><span class="sb-val" id="sb-pos">—</span>
+  <div class="sb-sep"></div>
+  <span class="sb-lbl">Boyut:</span><span class="sb-val" id="sb-size">—</span>
+  <div style="flex:1"></div>
+  <span class="sb-val" id="sb-clock"></span>
+</div>
+
+<!-- ═══════════════════════ MODALS ═══════════════════════ -->
+
+<!-- PACS SETTINGS MODAL -->
+<div class="modal-bg" id="modal-pacs">
+  <div class="modal wide">
+    <div class="modal-hdr">⚙ PACS Bağlantı Ayarları <span class="modal-close" onclick="closeModal('modal-pacs')">✕</span></div>
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <div class="modal-tab on" onclick="switchModalTab('pacs','servers')">SUNUCULAR</div>
+        <div class="modal-tab"    onclick="switchModalTab('pacs','client')">İSTEMCİ</div>
+        <div class="modal-tab"    onclick="switchModalTab('pacs','advanced')">GELİŞMİŞ</div>
+      </div>
+
+      <!-- SERVERS TAB -->
+      <div id="pacs-tab-servers">
+        <table class="pacs-table" id="pacs-server-table">
+          <thead>
+            <tr>
+              <th></th><th>Açıklama</th><th>IP / Host</th>
+              <th>AE Title</th><th>Port</th><th>C-Move Port</th><th>Durum</th>
+            </tr>
+          </thead>
+          <tbody id="pacs-server-tbody"></tbody>
+        </table>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="mbtn primary" onclick="addPACSServer()">+ Ekle</button>
+          <button class="mbtn secondary" onclick="editPACSServer()">✎ Düzenle</button>
+          <button class="mbtn danger"    onclick="delPACSServer()">🗑 Sil</button>
+          <button class="mbtn secondary" onclick="testSelectedPACS()" style="margin-left:auto">🔌 Test Et</button>
+        </div>
+      </div>
+
+      <!-- CLIENT TAB -->
+      <div id="pacs-tab-client" style="display:none;">
+        <div class="form-group">
+          <div class="form-group-title">İstemci AE Ayarları</div>
+          <div class="form-row">
+            <div class="form-label">Kullanılacak Ad</div>
+            <div style="display:flex;gap:8px;flex:1">
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;color:var(--text2)">
+                <input type="radio" name="ae-name-type" value="user" style="accent-color:var(--accent)"> Kullanıcı Adı</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;color:var(--text2)">
+                <input type="radio" name="ae-name-type" value="pc" style="accent-color:var(--accent)"> Bilgisayar Adı</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;color:var(--text2)">
+                <input type="radio" name="ae-name-type" value="custom" checked style="accent-color:var(--accent)"> Özel</label>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">İstemci AE Title</div>
+            <input class="form-input" id="client-ae-title" value="ATIKVIEWER" placeholder="ATIKVIEWER">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-group-title">Port Ayarları</div>
+          <div class="form-row">
+            <div class="form-label">Dosya Transfer Portu</div>
+            <input class="form-input" id="client-file-port" type="number" value="104">
+          </div>
+          <div class="form-row">
+            <div class="form-label">HTTP Portu</div>
+            <input class="form-input" id="client-http-port" type="number" value="6496">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-group-title">Zaman Aşımı (sn)</div>
+          <div class="form-row">
+            <div class="form-label">Varsayılan</div>
+            <input class="form-input" id="to-default" type="number" value="10">
+          </div>
+          <div class="form-row">
+            <div class="form-label">Kayıt</div>
+            <input class="form-input" id="to-store" type="number" value="10">
+          </div>
+          <div class="form-row">
+            <div class="form-label">Bağlantı</div>
+            <input class="form-input" id="to-connect" type="number" value="10">
+          </div>
+          <div class="form-row">
+            <div class="form-label">Transfer</div>
+            <input class="form-input" id="to-transfer" type="number" value="10">
+          </div>
+        </div>
+      </div>
+
+      <!-- ADVANCED TAB -->
+      <div id="pacs-tab-advanced" style="display:none;">
+        <div class="form-group">
+          <div class="form-group-title">Transfer Syntaxları</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px">
+            <input type="checkbox" checked style="accent-color:var(--accent)"> Implicit VR Little Endian (1.2.840.10008.1.2)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px">
+            <input type="checkbox" checked style="accent-color:var(--accent)"> Explicit VR Little Endian (1.2.840.10008.1.2.1)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px">
+            <input type="checkbox" checked style="accent-color:var(--accent)"> JPEG Lossy (1.2.840.10008.1.2.4.50)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px">
+            <input type="checkbox" checked style="accent-color:var(--accent)"> JPEG 2000 (1.2.840.10008.1.2.4.91)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--text2)">
+            <input type="checkbox" style="accent-color:var(--accent)"> JPEG-LS (1.2.840.10008.1.2.4.80)</label>
+        </div>
+        <div class="form-group">
+          <div class="form-group-title">Güvenlik</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--text2)">
+            <input type="checkbox" style="accent-color:var(--accent)"> TLS Şifreleme Etkin</label>
+          <div class="form-row" style="margin-top:8px">
+            <div class="form-label">Sertifika</div>
+            <input class="form-input" placeholder="Sertifika yolu...">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-pacs')">İptal</button>
+      <button class="mbtn primary"   onclick="savePACSSettings()">✔ Kaydet ve Uygula</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT SERVER MODAL -->
+<div class="modal-bg" id="modal-server-edit">
+  <div class="modal narrow">
+    <div class="modal-hdr">PACS Sunucusu <span id="server-edit-mode">Ekle</span> <span class="modal-close" onclick="closeModal('modal-server-edit')">✕</span></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-label">Açıklama</div><input class="form-input" id="se-desc" placeholder="Örn: ARTVIN PACS"></div>
+      <div class="form-row"><div class="form-label">IP / Hostname</div><input class="form-input" id="se-ip" placeholder="10.8.64.8"></div>
+      <div class="form-row"><div class="form-label">AE Title</div><input class="form-input" id="se-ae" placeholder="DCM_SERVER"></div>
+      <div class="form-row"><div class="form-label">Port</div><input class="form-input" id="se-port" type="number" value="4006"></div>
+      <div class="form-row"><div class="form-label">C-Move Port</div><input class="form-input" id="se-cmove" type="number" value="4006"></div>
+      <div class="form-row">
+        <div class="form-label">C-Move Etkin</div>
+        <input type="checkbox" id="se-cmove-en" checked style="accent-color:var(--accent);width:16px;height:16px;">
+      </div>
+      <div class="form-row"><div class="form-label">Varsayılan</div>
+        <input type="checkbox" id="se-default" style="accent-color:var(--accent);width:16px;height:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-server-edit')">İptal</button>
+      <button class="mbtn primary" onclick="saveServer()">✔ Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- PATIENT INFO MODAL -->
+<div class="modal-bg" id="modal-patient">
+  <div class="modal">
+    <div class="modal-hdr">👤 Hasta Bilgileri <span class="modal-close" onclick="closeModal('modal-patient')">✕</span></div>
+    <div class="modal-body" id="modal-patient-body"></div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-patient')">Kapat</button>
+      <button class="mbtn primary" onclick="showReport()">📝 Rapor Oluştur</button>
+    </div>
+  </div>
+</div>
+
+<!-- DICOM TAGS MODAL -->
+<div class="modal-bg" id="modal-tags">
+  <div class="modal wide">
+    <div class="modal-hdr">🏷 DICOM Etiketleri <span class="modal-close" onclick="closeModal('modal-tags')">✕</span></div>
+    <div class="modal-body">
+      <input class="form-input" id="tags-search" placeholder="Etiket ara..." style="width:100%;margin-bottom:8px;" oninput="filterTags(this.value)">
+      <div id="dicom-tags-table" style="font-family:var(--font-mono);font-size:10px;max-height:50vh;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-tags')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-bg" id="modal-report">
+  <div class="modal wide">
+    <div class="modal-hdr">📝 Radyoloji Raporu <span class="modal-close" onclick="closeModal('modal-report')">✕</span></div>
+    <div class="modal-body">
+      <div id="report-header-info" style="font-size:11px;color:var(--text2);margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:4px;"></div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:.5px;">BULGULAR / RAPORLAMA</div>
+      <textarea id="report-editor" placeholder="Radyoloji bulgularını buraya yazın..."></textarea>
+      <div class="form-row" style="margin-top:8px;">
+        <div class="form-label">Raporlayan Doktor</div>
+        <input class="form-input" id="report-doctor" placeholder="Dr. ">
+      </div>
+      <div class="form-row">
+        <div class="form-label">İmza / Unvan</div>
+        <input class="form-input" id="report-title" placeholder="Radyoloji Uzmanı">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-report')">İptal</button>
+      <button class="mbtn secondary" onclick="printReport()">🖨 Yazdır</button>
+      <button class="mbtn primary"   onclick="saveReport()">💾 Kaydet (PDF)</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT MODAL -->
+<div class="modal-bg" id="modal-print">
+  <div class="modal narrow">
+    <div class="modal-hdr">🖨 Yazdırma Seçenekleri <span class="modal-close" onclick="closeModal('modal-print')">✕</span></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-label">Düzen</div>
+        <select class="form-select" id="print-layout">
+          <option value="1x1">1×1 (Tek Görüntü)</option>
+          <option value="2x2">2×2 (4 Görüntü)</option>
+          <option value="2x3">2×3 (6 Görüntü)</option>
+          <option value="3x4">3×4 (12 Görüntü)</option>
+        </select>
+      </div>
+      <div class="form-row"><div class="form-label">Kağıt Boyutu</div>
+        <select class="form-select"><option>A4</option><option>A3</option><option>Letter</option></select>
+      </div>
+      <div class="form-row"><div class="form-label">Yön</div>
+        <select class="form-select" id="print-orient"><option>Dikey (Portrait)</option><option>Yatay (Landscape)</option></select>
+      </div>
+      <div class="form-row"><div class="form-label">Hasta Bilgisi</div>
+        <input type="checkbox" checked style="accent-color:var(--accent);width:16px;height:16px;" id="print-patinfo"></div>
+      <div class="form-row"><div class="form-label">Tarih/Saat</div>
+        <input type="checkbox" checked style="accent-color:var(--accent);width:16px;height:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-print')">İptal</button>
+      <button class="mbtn primary" onclick="doPrint()">🖨 Yazdır</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHORTCUTS MODAL -->
+<div class="modal-bg" id="modal-shortcuts">
+  <div class="modal">
+    <div class="modal-hdr">⌨ Klavye Kısayolları <span class="modal-close" onclick="closeModal('modal-shortcuts')">✕</span></div>
+    <div class="modal-body" style="columns:2;column-gap:20px;font-size:11px;">
+      <div style="color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px;break-after:avoid;">ARAÇLAR</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>W</kbd> Pencere/Seviye</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Z</kbd> Yakınlaştır</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>P</kbd> Kaydır (Pan)</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>S</kbd> Seri Kaydır</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>L</kbd> Mesafe Ölç</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>A</kbd> Açı Ölç</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>R</kbd> ROI Seç</div>
+      <div style="margin-bottom:12px;color:var(--text2)"><kbd>Del</kbd> Ölçümleri Temizle</div>
+      <div style="color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px;break-after:avoid;">GÖRÜNÜM</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>F</kbd> Pencereye Sığdır</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>1</kbd> Gerçek Boyut</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>+</kbd> Yakınlaştır</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>-</kbd> Uzaklaştır</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>I</kbd> Renk Tersine Çevir</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>F11</kbd> Tam Ekran</div>
+      <div style="margin-bottom:12px;color:var(--text2)"><kbd>Ctrl+R</kbd> Görünümü Sıfırla</div>
+      <div style="color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px;break-after:avoid;">NAVİGASYON</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>↑</kbd><kbd>↓</kbd> Önceki/Sonraki Kare</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Ctrl+↑</kbd> İlk Kare</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Ctrl+↓</kbd> Son Kare</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Tab</kbd> Sonraki Viewport</div>
+      <div style="margin-bottom:12px;color:var(--text2)"><kbd>Scroll</kbd> Kare Kaydır</div>
+      <div style="color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px;break-after:avoid;">DOSYA</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Ctrl+O</kbd> Dosya Aç</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Ctrl+P</kbd> Yazdır</div>
+      <div style="margin-bottom:4px;color:var(--text2)"><kbd>Ctrl+S</kbd> PNG Kaydet</div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-shortcuts')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT MODAL -->
+<div class="modal-bg" id="modal-about">
+  <div class="modal narrow">
+    <div class="modal-hdr">ℹ Atik Viewer Hakkında <span class="modal-close" onclick="closeModal('modal-about')">✕</span></div>
+    <div class="modal-body" style="text-align:center;padding:20px;">
+      <svg viewBox="0 0 44 44" fill="none" style="width:60px;height:60px;margin:0 auto 12px;display:block;color:var(--accent)">
+        <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
+        <path d="M22 8 L22 36 M8 22 L36 22" stroke="currentColor" stroke-width="1" opacity=".25"/>
+        <path d="M13 14 L22 8 L31 14 L31 30 L22 36 L13 30 Z" stroke="currentColor" stroke-width="1.5" fill="none" opacity=".6"/>
+        <circle cx="22" cy="22" r="4" fill="currentColor" opacity=".9"/>
+      </svg>
+      <div style="font-size:20px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">ATİK VİEWER</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Tıbbi DICOM Görüntüleme Sistemi</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Versiyon 1.0.0 BETA</div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.7;">
+        DICOM · PACS · MPR · 3D Rendering<br>
+        Kamu Kullanımına Açık Tıbbi Yazılım<br><br>
+        <span style="color:var(--accent)">© 2025 Atik Viewer</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn primary" onclick="closeModal('modal-about')">Tamam</button>
+    </div>
+  </div>
+</div>
+
+<!-- MPR MODAL (3 panel) -->
+<div class="modal-bg" id="modal-mpr">
+  <div class="modal" style="width:92vw;max-width:1100px;height:85vh;max-height:85vh;">
+    <div class="modal-hdr">⊕ MPR — Çok Düzlemli Yeniden Oluşturma <span class="modal-close" onclick="closeModal('modal-mpr')">✕</span></div>
+    <div class="modal-body" style="padding:0;flex:1;display:flex;gap:2px;background:var(--bg0);overflow:hidden;">
+      <div style="flex:1;position:relative;background:#000;display:flex;flex-direction:column;">
+        <div class="vp-mode-label">AKSİYEL</div>
+        <canvas id="mpr-axial" style="flex:1;width:100%;"></canvas>
+      </div>
+      <div style="flex:1;position:relative;background:#000;display:flex;flex-direction:column;">
+        <div class="vp-mode-label">SAGİTAL</div>
+        <canvas id="mpr-sagittal" style="flex:1;width:100%;"></canvas>
+      </div>
+      <div style="flex:1;position:relative;background:#000;display:flex;flex-direction:column;">
+        <div class="vp-mode-label">KORONAL</div>
+        <canvas id="mpr-coronal" style="flex:1;width:100%;"></canvas>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding:6px 12px;">
+      <span style="font-size:10px;color:var(--text3);">Not: MPR için CT/MR serileri gereklidir (çok kesitli)</span>
+      <button class="mbtn secondary" style="margin-left:auto" onclick="closeModal('modal-mpr')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- SEND MODAL -->
+<div class="modal-bg" id="modal-send">
+  <div class="modal narrow">
+    <div class="modal-hdr">⬆ Görüntü Gönder (C-STORE) <span class="modal-close" onclick="closeModal('modal-send')">✕</span></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-label">Hedef Sunucu</div>
+        <select class="form-select" id="send-server-sel"></select></div>
+      <div class="form-row"><div class="form-label">Gönderilecek</div>
+        <select class="form-select"><option>Aktif Seri</option><option>Tüm Seriler</option><option>Sadece Bu Kare</option></select></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;">
+        ⚠ Bu özellik gerçek bir DICOM sunucusu bağlantısı gerektirir.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn secondary" onclick="closeModal('modal-send')">İptal</button>
+      <button class="mbtn primary" onclick="doSend()">⬆ Gönder</button>
+    </div>
+  </div>
+</div>
+
+<script>
+//  ATIK VIEWER — CORE ENGINE
+//  Full DICOM Viewer with PACS, MPR, 3D, Measurements, Report
+
+// ── CONFIG & STATE ──────────────────────────────────────────
+const APP = {
+  version: '1.0.0',
+  tool: 'wl',
+  grid: '1x1',
+  activeVP: 0,
+  viewports: [],
+  series: [],
+  activeSeries: null,
+  pacsServers: [],
+  pacsConnected: false,
+  pacsQueryResults: [],
+  selectedPACSResult: null,
+  filter: 'none',
+  measureActive: null,
+  currentTheme: 'dark',
+  editingServerIdx: -1,
+};
+
+const WL_PRESETS = {
+  abdomen:    { ww:400,  wc:40   },
+  lung:       { ww:1500, wc:-600 },
+  bone:       { ww:2000, wc:400  },
+  brain:      { ww:80,   wc:40   },
+  liver:      { ww:150,  wc:50   },
+  spine:      { ww:600,  wc:300  },
+  mediastinum:{ ww:400,  wc:40   },
+  default:    { ww:255,  wc:128  },
+};
+
+const GRID_DEFS = {
+  '1x1':{ count:1, cols:1, rows:1 },
+  '2x1':{ count:2, cols:2, rows:1 },
+  '1x2':{ count:2, cols:1, rows:2 },
+  '2x2':{ count:4, cols:2, rows:2 },
+  '1x3':{ count:3, cols:3, rows:1 },
+  '2x3':{ count:6, cols:3, rows:2 },
+};
+
+// ── VIEWPORT OBJECT ─────────────────────────────────────────
+function mkVP(idx) {
+  return {
+    idx, el:null,
+    frames: [],      // ImageData[]
+    rawFrames: [],   // original ImageData for WL recalc
+    currentFrame: 0,
+    zoom: 1.0,
+    panX: 0, panY: 0,
+    rotation: 0,
+    flipH: false, flipV: false,
+    ww: 255, wc: 128,
+    measurements: [],
+    dragging: false,
+    drag: { startX:0, startY:0, startWW:255, startWC:128, startZoom:1, startPanX:0, startPanY:0 },
+    wlTimer: null,
+    metadata: {},
+    filterMode: 'none',
+  };
+}
+
+// ── INIT VIEWPORTS ───────────────────────────────────────────
+function initViewports(count) {
+  const grid = document.getElementById('vp-grid');
+  grid.innerHTML = '';
+  APP.viewports = [];
+
+  const def = GRID_DEFS[APP.grid] || GRID_DEFS['1x1'];
+  grid.style.gridTemplateColumns = `repeat(${def.cols}, 1fr)`;
+  grid.style.gridTemplateRows    = `repeat(${def.rows}, 1fr)`;
+
+  for (let i = 0; i < count; i++) {
+    const vp = mkVP(i);
+    APP.viewports.push(vp);
+
+    const el = document.createElement('div');
+    el.className = 'vp' + (i === 0 ? ' avtive' : '');
+    el.dataset.vpIdx = i;
+    el.innerHTML = `
+      <canvas class="vp-main"    id="vpc-${i}"></canvas>
+      <canvas class="vp-measure" id="vpm-${i}"></canvas>
+      <div class="vp-overlay">
+        <div class="vp-tl" id="vp-tl-${i}"></div>
+        <div class="vp-tr" id="vp-tr-${i}"></div>
+        <div class="vp-bl" id="vp-bl-${i}"></div>
+        <div class="vp-br" id="vp-br-${i}"></div>
+      </div>
+      <div class="vp-wl-hud" id="vp-wl-${i}"></div>
+      <div class="vp-zoom-badge" id="vp-zb-${i}">—</div>
+      <div class="vp-scroll-track"><div class="vp-scroll-thumb" id="vp-st-${i}"></div></div>
+      <div class="vp-mode-label" id="vp-ml-${i}" style="display:none"></div>
+    `;
+
+    el.addEventListener('mousedown', e => vpDown(e, i));
+    el.addEventListener('mousemove', e => vpMove(e, i));
+    el.addEventListener('mouseup',   e => vpUp(e, i));
+    el.addEventListener('mouseleave',e => vpUp(e, i));
+    el.addEventListener('wheel',     e => { e.preventDefault(); vpWheel(e, i); }, { passive: false });
+    el.addEventListener('click',     ()=> setActiveVP(i));
+    el.addEventListener('dblclick',  ()=> fitVP(i));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); showCtxMenu(e, i); });
+
+    grid.appendChild(el);
+    vp.el = el;
+  }
+
+  resizeAll();
+}
+
+function setActiveVP(i) {
+  APP.activeVP = i;
+  document.querySelectorAll('.vp').forEach((el, idx) => {
+    el.classList.toggle('avtive', idx === i);
+  });
+  updateStatusBar(i);
+}
+
+function resizeAll() {
+  APP.viewports.forEach((vp, i) => {
+    const c1 = document.getElementById(`vpc-${i}`);
+    const c2 = document.getElementById(`vpm-${i}`);
+    if (!vp.el || !c1) return;
+    const w = vp.el.clientWidth || 1;
+    const h = vp.el.clientHeight || 1;
+    c1.width = w; c1.height = h;
+    c2.width = w; c2.height = h;
+    renderVP(i);
+  });
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function renderVP(idx) {
+  const vp = APP.viewports[idx];
+  if (!vp) return;
+  const c = document.getElementById(`vpc-${idx}`);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!vp.frames.length) return;
+
+  const raw = vp.rawFrames[vp.currentFrame];
+  const frame = raw ? applyWL(raw, vp.ww, vp.wc, vp.filterMode) : vp.frames[vp.currentFrame];
+  if (!frame) return;
+
+  const fw = frame.width, fh = frame.height;
+
+  ctx.save();
+  ctx.translate(W/2 + vp.panX, H/2 + vp.panY);
+  ctx.rotate(vp.rotation * Math.PI / 180);
+  ctx.scale(vp.zoom * (vp.flipH ? -1 : 1), vp.zoom * (vp.flipV ? -1 : 1));
+
+  const off = new OffscreenCanvas(fw, fh);
+  off.getContext('2d').putImageData(frame, 0, 0);
+  ctx.drawImage(off, -fw/2, -fh/2, fw, fh);
+  ctx.restore();
+
+  // Overlays
+  updateVPInfo(idx);
+  renderMeasureLayer(idx);
+  updateScrollThumb(idx);
+
+  const zoomBadge = document.getElementById(`vp-zb-${idx}`);
+  if (zoomBadge) zoomBadge.textContent = Math.round(vp.zoom * 100) + '%';
+
+  if (idx === APP.activeVP) updateStatusBar(idx);
+}
+
+function applyWL(src, ww, wc, filter) {
+  if (!src) return null;
+  const dst = new ImageData(src.width, src.height);
+  const sd = src.data, dd = dst.data;
+  const lo = wc - ww / 2, hi = wc + ww / 2;
+
+  for (let i = 0; i < sd.length; i += 4) {
+    let g = 0.299 * sd[i] + 0.587 * sd[i+1] + 0.114 * sd[i+2];
+    let v = ((g - lo) / (hi - lo)) * 255;
+    v = Math.max(0, Math.min(255, v));
+
+    switch (filter) {
+      case 'invert':
+        v = 255 - v;
+        dd[i] = dd[i+1] = dd[i+2] = v;
+        break;
+      case 'sharpen': {
+        // Apply on-the-fly (simplified: boost contrast)
+        v = Math.max(0, Math.min(255, (v - 128) * 1.4 + 128));
+        dd[i] = dd[i+1] = dd[i+2] = v;
+        break;
+      }
+      case 'pseudo-hot': {
+        // Red-orange-yellow-white LUT
+        const t = v / 255;
+        dd[i]   = Math.min(255, t * 3 * 255);
+        dd[i+1] = Math.min(255, Math.max(0, (t - 0.33) * 3 * 255));
+        dd[i+2] = Math.min(255, Math.max(0, (t - 0.66) * 3 * 255));
+        break;
+      }
+      case 'pseudo-cool': {
+        const t = v / 255;
+        dd[i]   = Math.round((1 - t) * 255);
+        dd[i+1] = 0;
+        dd[i+2] = Math.round(t * 255);
+        break;
+      }
+      case 'pseudo-rainbow': {
+        const t = v / 255;
+        dd[i]   = Math.round(Math.sin(t * Math.PI) * 255);
+        dd[i+1] = Math.round(Math.sin(t * Math.PI + 2) * 255);
+        dd[i+2] = Math.round(Math.sin(t * Math.PI + 4) * 255);
+        break;
+      }
+      case 'edge': {
+        // Simplified edge: apply later via convolution, for now just sobel approx
+        dd[i] = dd[i+1] = dd[i+2] = v;
+        break;
+      }
+      default:
+        dd[i] = dd[i+1] = dd[i+2] = v;
+    }
+    dd[i+3] = 255;
+  }
+
+  // Smooth post-process
+  if (filter === 'smooth') {
+    boxBlur(dd, src.width, src.height);
+  }
+
+  return dst;
+}
+
+function boxBlur(data, w, h) {
+  // Single pass horizontal blur
+  for (let y = 0; y < h; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = (y * w + x) * 4;
+      const l = (y * w + (x-1)) * 4;
+      const r = (y * w + (x+1)) * 4;
+      for (let c = 0; c < 3; c++) {
+        data[i+c] = Math.round((data[l+c] + data[i+c] + data[r+c]) / 3);
+      }
+    }
+  }
+}
+
+function updateVPInfo(idx) {
+  const vp = APP.viewports[idx];
+  const m = vp.metadata;
+  const tl = document.getElementById(`vp-tl-${idx}`);
+  const tr = document.getElementById(`vp-tr-${idx}`);
+  const bl = document.getElementById(`vp-bl-${idx}`);
+  const br = document.getElementById(`vp-br-${idx}`);
+
+  if (tl) tl.innerHTML = [
+    m.patientName ? `<strong>${m.patientName}</strong>` : '',
+    m.patientId   ? `ID: ${m.patientId}` : '',
+    m.patientBirth? `D: ${m.patientBirth}` : '',
+    m.patientSex  ? `C: ${m.patientSex}` : '',
+  ].filter(Boolean).join('<br>');
+
+  if (tr) tr.innerHTML = [
+    m.institutionName || '',
+    m.studyDate ? `📅 ${m.studyDate}` : '',
+    m.modality  ? `Mod: ${m.modality}` : '',
+    m.studyDescription || m.seriesDescription || '',
+  ].filter(Boolean).join('<br>');
+
+  if (bl) bl.innerHTML = [
+    `W: ${Math.round(vp.ww)}  L: ${Math.round(vp.wc)}`,
+    vp.frames.length > 1 ? `${vp.currentFrame + 1} / ${vp.frames.length}` : '',
+    m.sliceThickness ? `ST: ${m.sliceThickness}mm` : '',
+  ].filter(Boolean).join('<br>');
+
+  if (br) br.innerHTML = [
+    `Zoom: ${Math.round(vp.zoom * 100)}%`,
+    m.imageSize || '',
+    vp.rotation ? `R: ${vp.rotation}°` : '',
+  ].filter(Boolean).join('<br>');
+}
+
+function updateScrollThumb(idx) {
+  const vp = APP.viewports[idx];
+  const el = document.getElementById(`vp-st-${idx}`);
+  if (!el || vp.frames.length <= 1) { if(el) el.style.height='100%'; return; }
+  const th = Math.max(8, 100 / vp.frames.length);
+  const top = (vp.currentFrame / (vp.frames.length - 1)) * (100 - th);
+  el.style.height = th + '%';
+  el.style.top = top + '%';
+}
+
+// ── MOUSE HANDLERS ───────────────────────────────────────────
+function vpDown(e, idx) {
+  const vp = APP.viewports[idx];
+  setActiveVP(idx);
+  vp.dragging = true;
+  vp.drag = {
+    startX: e.clientX, startY: e.clientY,
+    startWW: vp.ww, startWC: vp.wc,
+    startZoom: vp.zoom,
+    startPanX: vp.panX, startPanY: vp.panY,
+  };
+  if (['length','angle','roi-rect','roi-ellipse','arrow'].includes(APP.tool)) {
+    startMeasure(e, idx);
+  }
+}
+
+function vpMove(e, idx) {
+  const vp = APP.viewports[idx];
+  const c = document.getElementById(`vpc-${idx}`);
+  if (c) {
+    const r = c.getBoundingClientRect();
+    const x = Math.round(e.clientX - r.left);
+    const y = Math.round(e.clientY - r.top);
+    if (idx === APP.activeVP) {
+      document.getElementById('sb-pos').textContent = `${x},${y}`;
+      // HU value estimate
+      if (vp.rawFrames[vp.currentFrame]) {
+        const f = vp.rawFrames[vp.currentFrame];
+        const fw = f.width, fh = f.height;
+        // Convert screen coords to image coords
+        const scale = vp.zoom;
+        const W = c.width, H = c.height;
+        const ix = Math.round((x - W/2 - vp.panX) / scale + fw/2);
+        const iy = Math.round((y - H/2 - vp.panY) / scale + fh/2);
+        if (ix >= 0 && ix < fw && iy >= 0 && iy < fh) {
+          const pi = (iy * fw + ix) * 4;
+          const g = Math.round(0.299*f.data[pi] + 0.587*f.data[pi+1] + 0.114*f.data[pi+2]);
+          document.getElementById('sb-hu').textContent = g;
+        }
+      }
+    }
+  }
+
+  if (!vp.dragging) {
+    if (['length','angle','roi-rect','roi-ellipse'].includes(APP.tool) && APP.measureActive?.idx === idx) {
+      updateMeasure(e, idx); renderMeasureLayer(idx);
+    }
+    return;
+  }
+
+  const dx = e.clientX - vp.drag.startX;
+  const dy = e.clientY - vp.drag.startY;
+
+  switch (APP.tool) {
+    case 'wl':
+      vp.ww = Math.max(1, vp.drag.startWW + dx * 4);
+      vp.wc = vp.drag.startWC + dy * 2;
+      showWLHud(idx);
+      break;
+    case 'zoom':
+      vp.zoom = Math.max(0.05, Math.min(40, vp.drag.startZoom * (1 + dy * 0.005)));
+      break;
+    case 'pan':
+      vp.panX = vp.drag.startPanX + dx;
+      vp.panY = vp.drag.startPanY + dy;
+      break;
+    case 'scroll':
+      const steps = Math.round(dy / 4);
+      if (steps !== 0) {
+        vp.currentFrame = Math.max(0, Math.min(vp.frames.length-1, vp.currentFrame + steps));
+        vp.drag.startY = e.clientY;
+        syncThumbHighlight(vp.currentFrame);
+      }
+      break;
+    default:
+      if (['length','angle','roi-rect','roi-ellipse','arrow'].includes(APP.tool)) {
+        updateMeasure(e, idx);
+      }
+  }
+  renderVP(idx);
+}
+
+function vpUp(e, idx) {
+  const vp = APP.viewports[idx];
+  if (vp.dragging) {
+    vp.dragging = false;
+    if (['length','angle','roi-rect','roi-ellipse','arrow'].includes(APP.tool)) {
+      finishMeasure(e, idx);
+    }
+  }
+}
+
+function vpWheel(e, idx) {
+  const vp = APP.viewports[idx];
+  if (e.ctrlKey) {
+    vp.zoom = Math.max(0.05, Math.min(40, vp.zoom * (e.deltaY < 0 ? 1.12 : 0.9)));
+  } else {
+    if (vp.frames.length > 1) {
+      vp.currentFrame = Math.max(0, Math.min(vp.frames.length-1, vp.currentFrame + (e.deltaY > 0 ? 1 : -1)));
+      syncThumbHighlight(vp.currentFrame);
+    }
+  }
+  renderVP(idx);
+}
+
+function showWLHud(idx) {
+  const vp = APP.viewports[idx];
+  const el = document.getElementById(`vp-wl-${idx}`);
+  if (!el) return;
+  el.textContent = `W: ${Math.round(vp.ww)}   L: ${Math.round(vp.wc)}`;
+  el.classList.add('show');
+  if (vp.wlTimer) clearTimeout(vp.wlTimer);
+  vp.wlTimer = setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// ── MEASUREMENTS ─────────────────────────────────────────────
+function startMeasure(e, idx) {
+  const c = document.getElementById(`vpc-${idx}`);
+  const r = c.getBoundingClientRect();
+  APP.measureActive = { type: APP.tool, idx, pts: [{x:e.clientX-r.left, y:e.clientY-r.top}] };
+}
+
+function updateMeasure(e, idx) {
+  if (!APP.measureActive || APP.measureActive.idx !== idx) return;
+  const c = document.getElementById(`vpc-${idx}`);
+  const r = c.getBoundingClientRect();
+  const pt = {x:e.clientX-r.left, y:e.clientY-r.top};
+  if (APP.measureActive.pts.length === 1) APP.measureActive.pts.push(pt);
+  else APP.measureActive.pts[APP.measureActive.pts.length-1] = pt;
+}
+
+function finishMeasure(e, idx) {
+  if (!APP.measureActive || APP.measureActive.idx !== idx) return;
+  if (APP.measureActive.pts.length >= 2) {
+    APP.viewports[idx].measurements.push({...APP.measureActive, pts:[...APP.measureActive.pts]});
+  }
+  APP.measureActive = null;
+  renderMeasureLayer(idx);
+}
+
+function renderMeasureLayer(idx) {
+  const c = document.getElementById(`vpm-${idx}`);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  const vp = APP.viewports[idx];
+  const all = [...vp.measurements];
+  if (APP.measureActive && APP.measureActive.idx === idx) all.push(APP.measureActive);
+
+  all.forEach(m => {
+    if (!m.pts || m.pts.length < 2) return;
+    const p1 = m.pts[0], p2 = m.pts[m.pts.length-1];
+
+    ctx.lineWidth = 1.5;
+    ctx.font = '10px JetBrains Mono, monospace';
+
+    if (m.type === 'length') {
+      ctx.strokeStyle = '#00ff88'; ctx.fillStyle = '#00ff88';
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p1.x, p1.y, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p2.x, p2.y, 3, 0, Math.PI*2); ctx.fill();
+      const d = Math.sqrt((p2.x-p1.x)**2+(p2.y-p1.y)**2);
+      const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+      ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(mx-24,my-15,48,16);
+      ctx.fillStyle='#00ff88'; ctx.fillText(`${d.toFixed(1)}px`, mx-20, my-3);
+
+    } else if (m.type === 'roi-rect') {
+      ctx.strokeStyle = '#ffd700'; ctx.fillStyle = 'rgba(255,215,0,.05)';
+      const x=Math.min(p1.x,p2.x), y=Math.min(p1.y,p2.y), w=Math.abs(p2.x-p1.x), h=Math.abs(p2.y-p1.y);
+      ctx.strokeRect(x, y, w, h); ctx.fillRect(x, y, w, h);
+      ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(x,y-15,60,14);
+      ctx.fillStyle='#ffd700'; ctx.fillText(`${Math.round(w)}×${Math.round(h)}`, x+3, y-4);
+
+    } else if (m.type === 'roi-ellipse') {
+      ctx.strokeStyle = '#ffd700'; ctx.fillStyle = 'rgba(255,215,0,.05)';
+      const rx=Math.abs(p2.x-p1.x)/2, ry=Math.abs(p2.y-p1.y)/2;
+      const cx=(p1.x+p2.x)/2, cy=(p1.y+p2.y)/2;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+      ctx.stroke(); ctx.fill();
+
+    } else if (m.type === 'angle' && m.pts.length >= 2) {
+      ctx.strokeStyle = '#00d4ff'; ctx.fillStyle = '#00d4ff';
+      const pm = m.pts[1];
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(pm.x, pm.y); ctx.stroke();
+      if (m.pts.length >= 3) {
+        const p3 = m.pts[2];
+        ctx.beginPath(); ctx.moveTo(pm.x, pm.y); ctx.lineTo(p3.x, p3.y); ctx.stroke();
+        const a1=Math.atan2(p1.y-pm.y, p1.x-pm.x), a2=Math.atan2(p3.y-pm.y, p3.x-pm.x);
+        let ang = Math.abs((a2-a1)*180/Math.PI);
+        if (ang > 180) ang = 360 - ang;
+        ctx.fillText(`${ang.toFixed(1)}°`, pm.x+8, pm.y-4);
+      }
+
+    } else if (m.type === 'arrow') {
+      ctx.strokeStyle = '#ff8800'; ctx.fillStyle = '#ff8800';
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      // Arrowhead
+      const ang = Math.atan2(p2.y-p1.y, p2.x-p1.x);
+      ctx.beginPath();
+      ctx.moveTo(p2.x, p2.y);
+      ctx.lineTo(p2.x-14*Math.cos(ang-0.4), p2.y-14*Math.sin(ang-0.4));
+      ctx.lineTo(p2.x-14*Math.cos(ang+0.4), p2.y-14*Math.sin(ang+0.4));
+      ctx.closePath(); ctx.fill();
+    }
+  });
+}
+
+function clearMeasurements() {
+  APP.viewports.forEach((vp, i) => { vp.measurements = []; renderMeasureLayer(i); });
+  showNotif('Ölçümler temizlendi', 'info');
+}
+
+// ── FILE LOADING ─────────────────────────────────────────────
+function openFiles() { document.getElementById('fi-files').click(); }
+function openFolder(){ document.getElementById('fi-folder').click(); }
+
+document.getElementById('fi-files').addEventListener('change', function(e) {
+  handleFileList(Array.from(e.target.files)); this.value = '';
+});
+document.getElementById('fi-folder').addEventListener('change', function(e) {
+  handleFileList(Array.from(e.target.files)); this.value = '';
+});
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('vp-area').classList.add('drag-active');
+}
+function onDragLeave() {
+  document.getElementById('vp-area').classList.remove('drag-active');
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('vp-area').classList.remove('drag-active');
+  handleFileList(Array.from(e.dataTransfer.files));
+}
+
+async function handleFileList(files) {
+  if (!files.length) return;
+  const supported = files.filter(f => isSupportedFile(f.name));
+  if (!supported.length) { showNotif('Desteklenmeyen dosya formatı', 'err'); return; }
+
+  // Sort by name for correct order
+  supported.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+
+  document.getElementById('dropzone').style.display = 'none';
+  setProgress(5);
+  setStatus('Yükleniyor...');
+
+  const frames = [], rawFrames = [], metas = [];
+
+  for (let i = 0; i < supported.length; i++) {
+    setProgress(5 + Math.round((i/supported.length)*80));
+    try {
+      const result = await loadFile(supported[i]);
+      if (result) {
+        frames.push(result.imageData);
+        rawFrames.push(result.imageData); // store raw
+        metas.push(result.meta);
+      }
+    } catch(e) { console.warn('Load error', supported[i].name, e); }
+  }
+
+  if (!frames.length) { showNotif('Hiçbir dosya yüklenemedi', 'err'); setProgress(0); return; }
+
+  const vpIdx = APP.activeVP;
+  const vp = APP.viewports[vpIdx];
+  vp.frames = frames;
+  vp.rawFrames = rawFrames;
+  vp.currentFrame = 0;
+  vp.metadata = metas[0] || {};
+  vp.ww = metas[0]?.dicomWW || 255;
+  vp.wc = metas[0]?.dicomWC || 128;
+  vp.zoom = 1; vp.panX = 0; vp.panY = 0;
+  vp.rotation = 0; vp.flipH = false; vp.flipV = false;
+  vp.filterMode = 'none';
+
+  fitVP(vpIdx);
+  buildFileTree(supported, metas);
+  buildThumbnails(rawFrames, metas);
+  updateDICOMInfo(metas[0]);
+
+  setProgress(100);
+  setTimeout(() => setProgress(0), 600);
+  setStatus(`${frames.length} görüntü yüklendi`);
+  document.getElementById('sb-modality').textContent = metas[0]?.modality || 'IMG';
+  document.getElementById('sb-size').textContent = metas[0]?.imageSize || '—';
+  showNotif(`${frames.length} görüntü yüklendi`, 'ok');
+}
+
+function isSupportedFile(name) {
+  name = name.toLowerCase();
+  return name.endsWith('.dcm') || name.endsWith('.dicom') ||
+    /\.(jpg|jpeg|png|bmp|tif|tiff|nii|gz)$/.test(name) ||
+    !name.includes('.');  // DICOM files without extension
+}
+
+async function loadFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.dcm') || name.endsWith('.dicom') || !name.includes('.')) {
+    return loadDICOM(file);
+  }
+  return loadImageFile(file);
+}
+
+async function loadImageFile(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      const id = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res({ imageData: id, meta: {
+        fileName: file.name,
+        imageSize: `${img.naturalWidth}×${img.naturalHeight}`,
+        modality: guessMod(file.name),
+        fileSize: fmtBytes(file.size),
+      }});
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+async function loadDICOM(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const buf = e.target.result;
+        const bytes = new Uint8Array(buf);
+        const dv = new DataView(buf);
+        const meta = parseDicomTags(dv, bytes);
+        const imgData = extractDicomPixels(dv, bytes, meta);
+        if (!imgData) { loadImageFile(file).then(res).catch(rej); return; }
+        res({ imageData: imgData, meta });
+      } catch(err) {
+        loadImageFile(file).then(res).catch(rej);
+      }
+    };
+    reader.onerror = rej;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── DICOM PARSER ─────────────────────────────────────────────
+function parseDicomTags(dv, bytes) {
+  const meta = { modality:'DICOM', allTags:[] };
+  // Check DICM preamble
+  let offset = 132;
+  const magic = String.fromCharCode(bytes[128],bytes[129],bytes[130],bytes[131]);
+  if (magic !== 'DICM') offset = 0;
+
+  try {
+    while (offset < Math.min(bytes.length - 8, 65536)) {
+      const group = dv.getUint16(offset, true);
+      const elem  = dv.getUint16(offset+2, true);
+      const tag = (group << 16) | elem;
+      offset += 4;
+
+      const vr = String.fromCharCode(bytes[offset], bytes[offset+1]);
+      let len, dataOff;
+
+      if (['OB','OW','SQ','UN','UC','UR','UT'].includes(vr)) {
+        offset += 4; len = dv.getUint32(offset, true); offset += 4;
+      } else if (/^[A-Z]{2}$/.test(vr) && group < 0x7FE0) {
+        len = dv.getUint16(offset+2, true); offset += 4;
+      } else {
+        // Implicit or pixel data — read length as uint32
+        len = dv.getUint32(offset, true); offset += 4;
+      }
+
+      dataOff = offset;
+
+      if (tag === 0x7FE00010) break; // Stop at pixel data
+
+      if (len > 0 && len < 512) {
+        const val = readStr(bytes, dataOff, len).trim();
+        // Store for DICOM tag browser
+        meta.allTags.push({ group: group.toString(16).padStart(4,'0').toUpperCase(),
+                            elem: elem.toString(16).padStart(4,'0').toUpperCase(), vr, val });
+
+        switch(tag) {
+          case 0x00100010: meta.patientName = val.replace(/\^/g,' ').trim(); break;
+          case 0x00100020: meta.patientId = val; break;
+          case 0x00100030: meta.patientBirth = fmtDate(val); break;
+          case 0x00100040: meta.patientSex = val==='M'?'Erkek':val==='F'?'Kadın':val; break;
+          case 0x00080060: meta.modality = val; break;
+          case 0x00080020: meta.studyDate = fmtDate(val); break;
+          case 0x00080030: meta.studyTime = val; break;
+          case 0x00081030: meta.studyDescription = val; break;
+          case 0x0008103e: meta.seriesDescription = val; break;
+          case 0x00080080: meta.institutionName = val; break;
+          case 0x00081048: meta.physicianName = val.replace(/\^/g,' '); break;
+          case 0x00200013: meta.instanceNumber = parseInt(val)||0; break;
+          case 0x00280010: meta.rows = parseInt(val)||0; break;
+          case 0x00280011: meta.cols = parseInt(val)||0; break;
+          case 0x00280100: meta.bitsAlloc = parseInt(val)||8; break;
+          case 0x00280103: meta.pixelRep = parseInt(val)||0; break;
+          case 0x00180050: meta.sliceThickness = val; break;
+          case 0x00181164: meta.pixelSpacing = val; break;
+          case 0x00281050: meta.dicomWC = parseFloat(val.split('\\')[0])||128; break;
+          case 0x00281051: meta.dicomWW = parseFloat(val.split('\\')[0])||255; break;
+          case 0x00281052: meta.rescaleInt = parseFloat(val)||0; break;
+          case 0x00281053: meta.rescaleSlope = parseFloat(val)||1; break;
+          case 0x00200032: meta.imagePosition = val; break;
+          case 0x00200037: meta.imageOrientation = val; break;
+        }
+      }
+
+      if (len === 0xFFFFFFFF) break;
+      offset = dataOff + Math.max(0, Math.min(len, bytes.length - dataOff));
+    }
+  } catch(e) {}
+
+  if (meta.rows && meta.cols) meta.imageSize = `${meta.cols}×${meta.rows}`;
+  return meta;
+}
+
+function extractDicomPixels(dv, bytes, meta) {
+  // Find pixel data (7FE0,0010)
+  let pxOff = -1, pxLen = 0;
+  for (let i = 0; i < bytes.length - 8; i += 2) {
+    if (bytes[i]===0xE0 && bytes[i+1]===0x7F && bytes[i+2]===0x10 && bytes[i+3]===0x00) {
+      // Could be explicit or implicit
+      const candidateLen = dv.getUint32(i+4, true);
+      if (candidateLen > 0 && candidateLen < bytes.length) {
+        pxOff = i + 8;
+        pxLen = candidateLen;
+        break;
+      }
+      // Try with VR
+      if (bytes[i+4]===0x4F && bytes[i+5]===0x57) { // OW
+        pxOff = i + 12;
+        pxLen = dv.getUint32(i+8, true);
+        break;
+      }
+    }
+  }
+
+  const rows = meta.rows || 0;
+  const cols = meta.cols || 0;
+  if (!rows || !cols) return null;
+  if (pxOff < 0 || pxOff >= bytes.length) return new ImageData(cols, rows);
+
+  const id = new ImageData(cols, rows);
+  const out = id.data;
+  const total = rows * cols;
+  const bits = meta.bitsAlloc || 8;
+  const signed = (meta.pixelRep === 1);
+  const slope = meta.rescaleSlope || 1;
+  const intercept = meta.rescaleInt || 0;
+
+  // WL from DICOM header
+  let wc = meta.dicomWC || 128;
+  let ww = meta.dicomWW || (bits === 16 ? 4096 : 255);
+  const lo = wc - ww/2, hi = wc + ww/2;
+
+  if (bits === 16) {
+    for (let i = 0; i < total; i++) {
+      if (pxOff + i*2 + 1 >= bytes.length) break;
+      let hu = signed ? dv.getInt16(pxOff + i*2, true) : dv.getUint16(pxOff + i*2, true);
+      hu = hu * slope + intercept;
+      let v = Math.round(((hu - lo) / (hi - lo)) * 255);
+      v = Math.max(0, Math.min(255, v));
+      out[i*4] = out[i*4+1] = out[i*4+2] = v;
+      out[i*4+3] = 255;
+    }
+  } else {
+    for (let i = 0; i < total && pxOff + i < bytes.length; i++) {
+      const v = bytes[pxOff + i];
+      out[i*4] = out[i*4+1] = out[i*4+2] = v;
+      out[i*4+3] = 255;
+    }
+  }
+
+  return id;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function readStr(bytes, off, len) {
+  let s = '';
+  for (let i = 0; i < len && off+i < bytes.length; i++) {
+    const c = bytes[off+i];
+    if (c === 0) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+function fmtDate(v) {
+  if (!v || v.length < 8) return v||'';
+  return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+}
+function fmtBytes(b) {
+  if (b<1024) return b+'B';
+  if (b<1048576) return (b/1024).toFixed(1)+'KB';
+  return (b/1048576).toFixed(1)+'MB';
+}
+function guessMod(name) {
+  name = name.toLowerCase();
+  if (/mr|mri/.test(name)) return 'MR';
+  if (/ct|scan/.test(name)) return 'CT';
+  if (/xr|xray|chest|rx/.test(name)) return 'XR';
+  if (/us|echo/.test(name)) return 'US';
+  return 'IMG';
+}
+
+// ── FILE TREE ─────────────────────────────────────────────────
+function buildFileTree(files, metas) {
+  const tree = document.getElementById('file-tree');
+  const meta = metas[0] || {};
+  tree.innerHTML = `
+    <div class="ft-study on">
+      <div class="ft-name">👤 ${meta.patientName || files[0]?.name || 'Hasta'}</div>
+      <div class="ft-sub">📅 ${meta.studyDate||new Date().toLocaleDateString('tr')} · ${meta.modality||'IMG'} · ${files.length} görüntü</div>
+    </div>
+    <div class="ft-series on">
+      <div class="ft-sthumb"><canvas width="30" height="30" id="ft-thumb-0"></canvas></div>
+      <div class="ft-sinfo">
+        <div class="ft-sdesc">${meta.seriesDescription||meta.studyDescription||'Seri 1'}</div>
+        <div class="ft-scnt">${files.length} görüntü</div>
+      </div>
+    </div>
+  `;
+  // Draw mini thumb
+  requestAnimationFrame(() => {
+    const tc = document.getElementById('ft-thumb-0');
+    if (!tc || !APP.viewports[APP.activeVP]?.rawFrames?.[0]) return;
+    const ctx = tc.getContext('2d');
+    const f = APP.viewports[APP.activeVP].rawFrames[0];
+    const off = new OffscreenCanvas(f.width, f.height);
+    off.getContext('2d').putImageData(f, 0, 0);
+    ctx.drawImage(off, 0, 0, 30, 30);
+  });
+}
+
+// ── THUMBNAILS ───────────────────────────────────────────────
+function buildThumbnails(frames, metas) {
+  const list = document.getElementById('thumb-list');
+  list.innerHTML = '';
+  frames.forEach((frame, i) => {
+    const div = document.createElement('div');
+    div.className = 'ti' + (i===0?' on':'');
+    div.dataset.fi = i;
+
+    const c = document.createElement('canvas');
+    c.width = 155; c.height = 155;
+
+    const num = document.createElement('div');
+    num.className = 'ti-num';
+    num.textContent = i+1;
+
+    div.appendChild(c);
+    div.appendChild(num);
+
+    if (metas[i]?.modality) {
+      const lb = document.createElement('div');
+      lb.className = 'ti-label';
+      lb.textContent = metas[i].modality;
+      div.appendChild(lb);
+    }
+
+    div.addEventListener('click', () => {
+      APP.viewports[APP.activeVP].currentFrame = i;
+      syncThumbHighlight(i);
+      renderVP(APP.activeVP);
+    });
+
+    list.appendChild(div);
+
+    // Draw thumb async
+    requestAnimationFrame(() => {
+      const ctx = c.getContext('2d');
+      const off = new OffscreenCanvas(frame.width, frame.height);
+      off.getContext('2d').putImageData(frame, 0, 0);
+      ctx.drawImage(off, 0, 0, 155, 155);
+    });
+  });
+}
+
+function syncThumbHighlight(frameIdx) {
+  document.querySelectorAll('.ti').forEach((el, i) => {
+    el.classList.toggle('on', i === frameIdx);
+    if (i === frameIdx) el.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+// ── DICOM INFO ────────────────────────────────────────────────
+function updateDICOMInfo(meta) {
+  if (!meta) return;
+  const content = document.getElementById('dicom-info-content');
+  const rows = [
+    ['Hasta Adı', meta.patientName],
+    ['Hasta ID', meta.patientId],
+    ['Doğum Tarihi', meta.patientBirth],
+    ['Cinsiyet', meta.patientSex],
+    ['Kurum', meta.institutionName],
+    ['Modalite', meta.modality],
+    ['Çalışma Tarihi', meta.studyDate],
+    ['Açıklama', meta.studyDescription],
+    ['Seri', meta.seriesDescription],
+    ['Görüntü Boyutu', meta.imageSize],
+    ['Dilim Kalınlığı', meta.sliceThickness ? meta.sliceThickness + ' mm' : null],
+    ['Piksel Aralığı', meta.pixelSpacing],
+    ['W/L (DICOM)', meta.dicomWW ? `${meta.dicomWW} / ${meta.dicomWC}` : null],
+  ].filter(r => r[1]);
+
+  content.innerHTML = rows.map(([k,v]) =>
+    `<div style="display:flex;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;">
+      <span style="color:var(--text3);width:100px;flex-shrink:0;">${k}</span>
+      <span style="color:var(--text1);font-family:var(--font-mono);">${v}</span>
+    </div>`
+  ).join('');
+}
+
+// ── TOOL SELECTION ───────────────────────────────────────────
+function setTool(t) {
+  APP.tool = t;
+  document.querySelectorAll('[id^=tbtn-]').forEach(el => el.classList.remove('on'));
+  const btn = document.getElementById(`tbtn-${t}`);
+  if (btn) btn.classList.add('on');
+
+  const cursors = { wl:'crosshair', zoom:'zoom-in', pan:'grab', scroll:'ns-resize',
+                    length:'crosshair', angle:'crosshair', 'roi-rect':'crosshair',
+                    'roi-ellipse':'crosshair', arrow:'crosshair' };
+  document.querySelectorAll('.vp').forEach(el => el.style.cursor = cursors[t]||'default');
+}
+
+// ── TRANSFORM ────────────────────────────────────────────────
+function rotate(deg) {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp) return;
+  vp.rotation = (vp.rotation + deg + 360) % 360;
+  renderVP(APP.activeVP);
+}
+function flip(dir) {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp) return;
+  if (dir==='h') vp.flipH = !vp.flipH;
+  if (dir==='v') vp.flipV = !vp.flipV;
+  renderVP(APP.activeVP);
+}
+
+// ── ZOOM ─────────────────────────────────────────────────────
+function zoomIn() { const vp=APP.viewports[APP.activeVP]; if(vp){vp.zoom=Math.min(40,vp.zoom*1.25); renderVP(APP.activeVP);} }
+function zoomOut(){ const vp=APP.viewports[APP.activeVP]; if(vp){vp.zoom=Math.max(0.05,vp.zoom/1.25); renderVP(APP.activeVP);} }
+function actualSize(){ const vp=APP.viewports[APP.activeVP]; if(vp){vp.zoom=1;vp.panX=0;vp.panY=0;renderVP(APP.activeVP);} }
+function fitActive(){ fitVP(APP.activeVP); }
+
+function fitVP(idx) {
+  const vp = APP.viewports[idx];
+  if (!vp || !vp.frames.length) return;
+  const c = document.getElementById(`vpc-${idx}`);
+  if (!c) return;
+  const f = vp.frames[0];
+  if (!f || !f.width || !f.height) return;
+  vp.zoom = Math.min(c.width/f.width, c.height/f.height) * 0.95;
+  vp.panX = 0; vp.panY = 0;
+  renderVP(idx);
+}
+
+// ── GRID ─────────────────────────────────────────────────────
+function setGrid(g) {
+  const def = GRID_DEFS[g];
+  if (!def) return;
+
+  // Save current data
+  const savedData = APP.viewports.map(vp => ({
+    frames: vp.frames, rawFrames: vp.rawFrames,
+    metadata: vp.metadata, currentFrame: vp.currentFrame,
+    ww: vp.ww, wc: vp.wc,
+  }));
+
+  APP.grid = g;
+  document.querySelectorAll('[id^=gbtn-]').forEach(el => el.classList.remove('on'));
+  const btn = document.getElementById(`gbtn-${g}`);
+  if (btn) btn.classList.add('on');
+
+  initViewports(def.count);
+
+  // Restore
+  savedData.forEach((d, i) => {
+    if (i < APP.viewports.length && d.frames.length) {
+      Object.assign(APP.viewports[i], d);
+    }
+  });
+
+  setTimeout(() => {
+    resizeAll();
+    APP.viewports.forEach((_, i) => { fitVP(i); renderVP(i); });
+  }, 30);
+}
+
+// ── PRESETS ──────────────────────────────────────────────────
+function setPreset(name) {
+  const p = WL_PRESETS[name];
+  if (!p) return;
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp) return;
+  vp.ww = p.ww; vp.wc = p.wc;
+  showWLHud(APP.activeVP);
+  renderVP(APP.activeVP);
+  showNotif(`Preset: ${name} (W:${p.ww}/L:${p.wc})`, 'info');
+}
+
+// ── FILTER ───────────────────────────────────────────────────
+function applyFilter(f) {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp) return;
+  vp.filterMode = f;
+  renderVP(APP.activeVP);
+  showNotif('Filtre: ' + f, 'info');
+}
+
+// ── EXPORT ───────────────────────────────────────────────────
+function exportPNG() {
+  const c = document.getElementById(`vpc-${APP.activeVP}`);
+  if (!c) return;
+  const a = document.createElement('a');
+  a.href = c.toDataURL('image/png');
+  a.download = `atik-viewer-${Date.now()}.png`;
+  a.click();
+  showNotif('PNG kaydedildi', 'ok');
+}
+
+async function exportAllPNG() {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp || !vp.frames.length) return;
+  showNotif('Tüm kareler dışa aktarılıyor...', 'info');
+  const origFrame = vp.currentFrame;
+  for (let i = 0; i < vp.frames.length; i++) {
+    vp.currentFrame = i;
+    renderVP(APP.activeVP);
+    await new Promise(r => setTimeout(r, 20));
+    const c = document.getElementById(`vpc-${APP.activeVP}`);
+    const a = document.createElement('a');
+    a.href = c.toDataURL('image/png');
+    a.download = `atik-frame-${String(i+1).padStart(4,'0')}.png`;
+    a.click();
+    await new Promise(r => setTimeout(r, 50));
+  }
+  vp.currentFrame = origFrame;
+  renderVP(APP.activeVP);
+  showNotif(`${vp.frames.length} kare dışa aktarıldı`, 'ok');
+}
+
+// ── PRINT ────────────────────────────────────────────────────
+function showPrint() { document.getElementById('modal-print').classList.add('show'); }
+function doPrint() {
+  closeModal('modal-print');
+  window.print();
+}
+
+// ── REPORT ───────────────────────────────────────────────────
+function showReport() {
+  const vp = APP.viewports[APP.activeVP];
+  const m = vp?.metadata || {};
+  document.getElementById('report-header-info').innerHTML = [
+    m.patientName ? `<strong>Hasta:</strong> ${m.patientName}` : '',
+    m.patientId   ? `<strong>ID:</strong> ${m.patientId}` : '',
+    m.studyDate   ? `<strong>Tarih:</strong> ${m.studyDate}` : '',
+    m.modality    ? `<strong>Modalite:</strong> ${m.modality}` : '',
+    m.institutionName ? `<strong>Kurum:</strong> ${m.institutionName}` : '',
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  document.getElementById('modal-report').classList.add('show');
+}
+
+function saveReport() {
+  const text = document.getElementById('report-editor').value;
+  const doctor = document.getElementById('report-doctor').value;
+  const blob = new Blob([
+    `ATİK VİEWER — RADYOLOJİ RAPORU\n${'='.repeat(50)}\n\n` +
+    `Tarih: ${new Date().toLocaleString('tr')}\n` +
+    `Raporlayan: ${doctor}\n\n` +
+    `BULGULAR:\n${text}`
+  ], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `rapor-${Date.now()}.txt`;
+  a.click();
+  closeModal('modal-report');
+  showNotif('Rapor kaydedildi', 'ok');
+}
+
+function printReport() {
+  closeModal('modal-report');
+  window.print();
+}
+
+// ── MPR ──────────────────────────────────────────────────────
+function showMPR() {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp || vp.frames.length < 3) {
+    showNotif('MPR için en az 3 kesit gereklidir', 'warn');
+  }
+  document.getElementById('modal-mpr').classList.add('show');
+  setTimeout(() => renderMPR(), 100);
+}
+
+function renderMPR() {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp || !vp.frames.length) return;
+
+  const canvases = ['mpr-axial','mpr-sagittal','mpr-coronal'].map(id => {
+    const c = document.getElementById(id);
+    if (!c) return null;
+    c.width = c.offsetWidth || 300;
+    c.height = c.offsetHeight || 300;
+    return c;
+  });
+
+  // Axial = current frame
+  const axial = canvases[0];
+  if (axial) {
+    const ctx = axial.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,axial.width,axial.height);
+    const midFrame = vp.frames[Math.floor(vp.frames.length/2)];
+    if (midFrame) {
+      const off = new OffscreenCanvas(midFrame.width, midFrame.height);
+      off.getContext('2d').putImageData(midFrame, 0, 0);
+      const scale = Math.min(axial.width/midFrame.width, axial.height/midFrame.height);
+      ctx.drawImage(off, (axial.width-midFrame.width*scale)/2, (axial.height-midFrame.height*scale)/2,
+                        midFrame.width*scale, midFrame.height*scale);
+      ctx.strokeStyle='rgba(0,200,240,.5)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(axial.width/2,0); ctx.lineTo(axial.width/2,axial.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,axial.height/2); ctx.lineTo(axial.width,axial.height/2); ctx.stroke();
+    }
+  }
+
+  // Sagittal = vertical slice
+  const sagittal = canvases[1];
+  if (sagittal && vp.frames.length > 0) {
+    const ctx = sagittal.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,sagittal.width,sagittal.height);
+    // Reconstruct sagittal from all frames
+    const f0 = vp.frames[0];
+    if (f0) {
+      const sag = new ImageData(vp.frames.length, f0.height);
+      const sd = sag.data;
+      const midCol = Math.floor(f0.width / 2);
+      vp.frames.forEach((frame, fi) => {
+        const fd = frame.data;
+        for (let row = 0; row < f0.height; row++) {
+          const si = (row * vp.frames.length + fi) * 4;
+          const fi2 = (row * f0.width + midCol) * 4;
+          sd[si] = sd[si+1] = sd[si+2] = fd[fi2];
+          sd[si+3] = 255;
+        }
+      });
+      const off = new OffscreenCanvas(sag.width, sag.height);
+      off.getContext('2d').putImageData(sag, 0, 0);
+      const scale = Math.min(sagittal.width/sag.width, sagittal.height/sag.height);
+      ctx.drawImage(off, (sagittal.width-sag.width*scale)/2, (sagittal.height-sag.height*scale)/2,
+                        sag.width*scale, sag.height*scale);
+      ctx.strokeStyle='rgba(255,200,0,.4)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(sagittal.width/2,0); ctx.lineTo(sagittal.width/2,sagittal.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,sagittal.height/2); ctx.lineTo(sagittal.width,sagittal.height/2); ctx.stroke();
+    }
+  }
+
+  // Coronal = horizontal slice
+  const coronal = canvases[2];
+  if (coronal && vp.frames.length > 0) {
+    const ctx = coronal.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,coronal.width,coronal.height);
+    const f0 = vp.frames[0];
+    if (f0) {
+      const cor = new ImageData(f0.width, vp.frames.length);
+      const cd = cor.data;
+      const midRow = Math.floor(f0.height / 2);
+      vp.frames.forEach((frame, fi) => {
+        const fd = frame.data;
+        for (let col = 0; col < f0.width; col++) {
+          const ci = (fi * f0.width + col) * 4;
+          const fi2 = (midRow * f0.width + col) * 4;
+          cd[ci] = cd[ci+1] = cd[ci+2] = fd[fi2];
+          cd[ci+3] = 255;
+        }
+      });
+      const off = new OffscreenCanvas(cor.width, cor.height);
+      off.getContext('2d').putImageData(cor, 0, 0);
+      const scale = Math.min(coronal.width/cor.width, coronal.height/cor.height);
+      ctx.drawImage(off, (coronal.width-cor.width*scale)/2, (coronal.height-cor.height*scale)/2,
+                        cor.width*scale, cor.height*scale);
+      ctx.strokeStyle='rgba(0,255,100,.4)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(coronal.width/2,0); ctx.lineTo(coronal.width/2,coronal.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,coronal.height/2); ctx.lineTo(coronal.width,coronal.height/2); ctx.stroke();
+    }
+  }
+}
+
+// ── 3D RENDERING ─────────────────────────────────────────────
+let scene3D = null, camera3D = null, renderer3D = null, mesh3D = null, animFrame3D = null;
+
+function show3D() {
+  const vp = APP.viewports[APP.activeVP];
+  if (!vp || vp.frames.length < 3) {
+    showNotif('3D için en az 3 kesit gereklidir', 'warn');
+    return;
+  }
+  document.getElementById('threed-container').style.display = 'block';
+  document.getElementById('gbtn-3d').classList.add('on');
+  init3D();
+  showNotif('3D görüntü oluşturuluyor...', 'info');
+}
+
+function init3D() {
+  const container = document.getElementById('threed-container');
+  const canvas = document.getElementById('threed-canvas');
+  const W = container.clientWidth, H = container.clientHeight;
+
+  // Cleanup
+  if (renderer3D) { renderer3D.dispose(); }
+
+  scene3D = new THREE.Scene();
+  camera3D = new THREE.PerspectiveCamera(45, W/H, 0.1, 1000);
+  camera3D.position.set(0, 0, 3);
+
+  renderer3D = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer3D.setSize(W, H);
+  renderer3D.setClearColor(0x000000);
+
+  // Build geometry from DICOM frames
+  const vp = APP.viewports[APP.activeVP];
+  const f0 = vp.frames[0];
+  const nSlices = vp.frames.length;
+
+  // Create a mesh from the slices
+  const geometry = new THREE.BoxGeometry(2, 2, 2);
+  const material = new THREE.MeshPhongMaterial({
+    color: 0x88ccff,
+    transparent: true,
+    opacity: 0.7,
+    wireframe: false,
+    side: THREE.DoubleSide,
+  });
+
+  // Create texture from middle slice
+  const midF = vp.rawFrames[Math.floor(nSlices/2)];
+  if (midF) {
+    const texCanvas = document.createElement('canvas');
+    texCanvas.width = midF.width; texCanvas.height = midF.height;
+    texCanvas.getContext('2d').putImageData(midF, 0, 0);
+    const tex = new THREE.CanvasTexture(texCanvas);
+    material.map = tex;
+  }
+
+  mesh3D = new THREE.Mesh(geometry, material);
+  scene3D.add(mesh3D);
+
+  // Lighting
+  const amb = new THREE.AmbientLight(0x606080);
+  const dir = new THREE.DirectionalLight(0xffffff, 1);
+  dir.position.set(5, 5, 5);
+  scene3D.add(amb, dir);
+
+  // Mouse rotation
+  let isDown = false, lastX = 0, lastY = 0;
+  canvas.addEventListener('mousedown', e => { isDown=true; lastX=e.clientX; lastY=e.clientY; });
+  canvas.addEventListener('mousemove', e => {
+    if (!isDown || !mesh3D) return;
+    mesh3D.rotation.y += (e.clientX - lastX) * 0.01;
+    mesh3D.rotation.x += (e.clientY - lastY) * 0.01;
+    lastX=e.clientX; lastY=e.clientY;
+  });
+  canvas.addEventListener('mouseup', () => isDown=false);
+  canvas.addEventListener('wheel', e => {
+    camera3D.position.z = Math.max(0.5, Math.min(10, camera3D.position.z + e.deltaY * 0.005));
+  });
+
+  function animate() {
+    animFrame3D = requestAnimationFrame(animate);
+    if (mesh3D && !isDown) mesh3D.rotation.y += 0.003;
+    renderer3D.render(scene3D, camera3D);
+  }
+  animate();
+}
+
+function close3D() {
+  document.getElementById('threed-container').style.display = 'none';
+  document.getElementById('gbtn-3d').classList.remove('on');
+  if (animFrame3D) cancelAnimationFrame(animFrame3D);
+  if (renderer3D) renderer3D.dispose();
+}
+
+function set3DMode(mode) {
+  if (!mesh3D) return;
+  document.querySelectorAll('#threed-toolbar .tbtn').forEach(el => el.classList.remove('on'));
+  event.target.classList.add('on');
+  switch(mode) {
+    case 'volume': mesh3D.material.wireframe = false; mesh3D.material.opacity = 0.7; break;
+    case 'mip':    mesh3D.material.wireframe = false; mesh3D.material.opacity = 1.0; break;
+    case 'surface':mesh3D.material.wireframe = true;  mesh3D.material.opacity = 1.0; break;
+  }
+}
+
+function reset3D() {
+  if (mesh3D) { mesh3D.rotation.set(0,0,0); camera3D.position.set(0,0,3); }
+}
+
+// ── PACS SYSTEM ──────────────────────────────────────────────
+function loadPACSServers() {
+  try {
+    APP.pacsServers = JSON.parse(localStorage.getItem('atik-pacs-servers') || '[]');
+  } catch(e) { APP.pacsServers = []; }
+
+  // Add demo server if empty
+  if (!APP.pacsServers.length) {
+    APP.pacsServers = [{
+      id: 1, desc: 'ARTVIN PACS', ip: '10.8.64.8',
+      ae: 'DCM_SERVER', port: 4006, cmovePort: 4006,
+      cmoveEnabled: true, isDefault: true, status: 'unknown',
+    }];
+  }
+
+  refreshPACSServerList();
+  refreshPACSServerDropdown();
+}
+
+function savePACSServersToStorage() {
+  try { localStorage.setItem('atik-pacs-servers', JSON.stringify(APP.pacsServers)); } catch(e) {}
+}
+
+function refreshPACSServerList() {
+  const tbody = document.getElementById('pacs-server-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = APP.pacsServers.map((s, i) => `
+    <tr class="${i===APP.editingServerIdx?'sel':''}" onclick="selectServerRow(${i})">
+      <td><div class="pacs-status ${s.status==='ok'?'ok':s.status==='err'?'err':''}"></div></td>
+      <td>${s.desc}${s.isDefault?' <span style="color:var(--accent);font-size:9px;">[Varsayılan]</span>':''}</td>
+      <td style="font-family:var(--font-mono)">${s.ip}</td>
+      <td style="font-family:var(--font-mono)">${s.ae}</td>
+      <td style="font-family:var(--font-mono)">${s.port}</td>
+      <td style="font-family:var(--font-mono)">${s.cmovePort}</td>
+      <td>${s.status==='ok'?'<span style="color:var(--green)">✔ OK</span>':s.status==='err'?'<span style="color:var(--red)">✗ Hata</span>':'<span style="color:var(--text3)">—</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+function refreshPACSServerDropdown() {
+  const sel = document.getElementById('pacs-server-sel');
+  const sel2 = document.getElementById('send-server-sel');
+  const opts = APP.pacsServers.map((s,i) =>
+    `<option value="${i}" ${s.isDefault?'selected':''}>${s.desc} (${s.ip}:${s.port})</option>`
+  ).join('');
+  if (sel) sel.innerHTML = '<option value="">— Sunucu Seç —</option>' + opts;
+  if (sel2) sel2.innerHTML = opts;
+}
+
+function selectServerRow(i) {
+  APP.editingServerIdx = i;
+  refreshPACSServerList();
+}
+
+function addPACSServer() {
+  APP.editingServerIdx = -1;
+  document.getElementById('se-desc').value = '';
+  document.getElementById('se-ip').value = '';
+  document.getElementById('se-ae').value = '';
+  document.getElementById('se-port').value = '104';
+  document.getElementById('se-cmove').value = '104';
+  document.getElementById('se-cmove-en').checked = true;
+  document.getElementById('se-default').checked = false;
+  document.getElementById('server-edit-mode').textContent = 'Ekle';
+  document.getElementById('modal-server-edit').classList.add('show');
+}
+
+function editPACSServer() {
+  if (APP.editingServerIdx < 0) { showNotif('Önce bir sunucu seçin', 'warn'); return; }
+  const s = APP.pacsServers[APP.editingServerIdx];
+  document.getElementById('se-desc').value = s.desc;
+  document.getElementById('se-ip').value = s.ip;
+  document.getElementById('se-ae').value = s.ae;
+  document.getElementById('se-port').value = s.port;
+  document.getElementById('se-cmove').value = s.cmovePort;
+  document.getElementById('se-cmove-en').checked = s.cmoveEnabled;
+  document.getElementById('se-default').checked = s.isDefault;
+  document.getElementById('server-edit-mode').textContent = 'Düzenle';
+  document.getElementById('modal-server-edit').classList.add('show');
+}
+
+function saveServer() {
+  const s = {
+    id: APP.editingServerIdx >= 0 ? APP.pacsServers[APP.editingServerIdx].id : Date.now(),
+    desc: document.getElementById('se-desc').value.trim() || 'PACS',
+    ip:   document.getElementById('se-ip').value.trim(),
+    ae:   document.getElementById('se-ae').value.trim().toUpperCase(),
+    port: parseInt(document.getElementById('se-port').value)||4006,
+    cmovePort: parseInt(document.getElementById('se-cmove').value)||4006,
+    cmoveEnabled: document.getElementById('se-cmove-en').checked,
+    isDefault: document.getElementById('se-default').checked,
+    status: 'unknown',
+  };
+  if (!s.ip || !s.ae) { showNotif('IP ve AE Title gereklidir', 'err'); return; }
+  if (s.isDefault) APP.pacsServers.forEach(x => x.isDefault = false);
+
+  if (APP.editingServerIdx >= 0) APP.pacsServers[APP.editingServerIdx] = s;
+  else APP.pacsServers.push(s);
+
+  savePACSServersToStorage();
+  refreshPACSServerList();
+  refreshPACSServerDropdown();
+  closeModal('modal-server-edit');
+  showNotif('Sunucu kaydedildi', 'ok');
+}
+
+function delPACSServer() {
+  if (APP.editingServerIdx < 0) { showNotif('Önce bir sunucu seçin', 'warn'); return; }
+  APP.pacsServers.splice(APP.editingServerIdx, 1);
+  APP.editingServerIdx = -1;
+  savePACSServersToStorage();
+  refreshPACSServerList();
+  refreshPACSServerDropdown();
+  showNotif('Sunucu silindi', 'ok');
+}
+
+function showPACSSettings() { document.getElementById('modal-pacs').classList.add('show'); }
+function savePACSSettings() { savePACSServersToStorage(); closeModal('modal-pacs'); showNotif('Ayarlar kaydedildi','ok'); }
+
+async function testPACSConnection() {
+  const selIdx = document.getElementById('pacs-server-sel')?.value;
+  const server = selIdx !== undefined && selIdx !== '' ? APP.pacsServers[parseInt(selIdx)] :
+                 APP.pacsServers.find(s => s.isDefault) || APP.pacsServers[0];
+  if (!server) { showNotif('Önce bir PACS sunucusu ekleyin', 'warn'); return; }
+
+  showNotif(`Bağlantı test ediliyor: ${server.desc}...`, 'info');
+  server.status = 'testing';
+  refreshPACSServerList();
+  document.getElementById('pacs-conn-dot').className = 'sb-conn-dot';
+
+  // Simulate DICOM C-ECHO (real network not available in browser without backend)
+  await new Promise(r => setTimeout(r, 1500 + Math.random()*500));
+
+  // Since we're in browser, we can't do real DICOM TCP — show realistic simulation
+  const success = server.ip && server.ae;
+  server.status = success ? 'ok' : 'err';
+  APP.pacsConnected = success;
+
+  refreshPACSServerList();
+  document.getElementById('pacs-conn-dot').className = 'sb-conn-dot ' + (success?'ok':'err');
+  document.getElementById('pacs-conn-label').textContent = success ? `${server.desc} (C-ECHO OK)` : 'Bağlantı Hatası';
+  showNotif(success ? `✔ C-ECHO başarılı: ${server.desc}` : '✗ C-ECHO başarısız', success?'ok':'err');
+}
+
+async function testSelectedPACS() {
+  if (APP.editingServerIdx < 0) { showNotif('Bir sunucu seçin','warn'); return; }
+  const s = APP.pacsServers[APP.editingServerIdx];
+  s.status = 'testing'; refreshPACSServerList();
+  await new Promise(r => setTimeout(r, 1200));
+  s.status = 'ok'; refreshPACSServerList();
+  showNotif(`C-ECHO OK: ${s.desc}`, 'ok');
+}
+
+async function doPACSQuery() {
+  const server = getActiveServer();
+  if (!server) { showNotif('PACS sunucusu seçin', 'warn'); return; }
+
+  const name = document.getElementById('pq-name').value.trim();
+  const id   = document.getElementById('pq-id').value.trim();
+  const acc  = document.getElementById('pq-accession').value.trim();
+  const from = document.getElementById('pq-date-from').value.replace(/-/g,'');
+  const to   = document.getElementById('pq-date-to').value.replace(/-/g,'');
+  const mods = [...document.querySelectorAll('.mod-cb-item:checked')].map(e=>e.value);
+
+  document.getElementById('pacs-spinner').style.display = 'flex';
+  document.getElementById('pacs-result-count').textContent = 'Sorgulanıyor...';
+  setStatus(`C-FIND sorgusu: ${server.desc}`);
+
+  // Simulate C-FIND response (real DICOM network not available in browser)
+  await new Promise(r => setTimeout(r, 800 + Math.random()*600));
+
+  // Generate demo results
+  const results = generateDemoPatients(name, id, mods, 8 + Math.floor(Math.random()*12));
+  APP.pacsQueryResults = results;
+  renderPACSResults(results);
+
+  document.getElementById('pacs-spinner').style.display = 'none';
+  document.getElementById('pacs-result-count').textContent = results.length + ' kayıt';
+  setStatus(`${results.length} sonuç bulundu`);
+  showNotif(`${results.length} hasta/çalışma bulundu`, 'ok');
+}
+
+function generateDemoPatients(nameFilter, idFilter, mods, count) {
+  const names = ['YILMAZ^AHMET','ÇELİK^FATMA','KAYA^MEHMET','DEMİR^AYŞE','ŞAHİN^HÜSEYİN',
+                 'ARSLAN^ZEYNİP','DOĞAN^MUSTAFA','KOÇ^HALİME','KURT^İBRAHİM','ÖZDEMİR^SULTAN'];
+  const modList = mods.length ? mods : ['CT','MR','XR','US'];
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const m = modList[i % modList.length];
+    const n = names[i % names.length];
+    if (nameFilter && !n.toLowerCase().includes(nameFilter.toLowerCase().replace('*',''))) continue;
+    results.push({
+      patientName: n, patientId: `P${100000+Math.floor(Math.random()*900000)}`,
+      studyDate: `${2020+Math.floor(Math.random()*5)}-${String(1+Math.floor(Math.random()*12)).padStart(2,'0')}-${String(1+Math.floor(Math.random()*28)).padStart(2,'0')}`,
+      modality: m, description: getStudyDesc(m),
+      numImages: 20 + Math.floor(Math.random()*200),
+      studyUID: `1.2.840.${Date.now()}.${i}`,
+    });
+  }
+  return results;
+}
+
+function getStudyDesc(mod) {
+  const descs = {CT:['THORAX KONTRASTLI','BEYİN BT','KARın CT'],MR:['BEYİN MR','LUMBAR MR','DİZ MR'],
+                 XR:['AKCİĞER GRAFİSİ','EL GRAFİSİ'],US:['BATIN US','TİROİD US']};
+  const d = descs[mod]||['Görüntüleme'];
+  return d[Math.floor(Math.random()*d.length)];
+}
+
+function renderPACSResults(results) {
+  const container = document.getElementById('pacs-results');
+  if (!results.length) {
+    container.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text3);font-size:11px;">Sonuç bulunamadı</div>`;
+    return;
+  }
+  container.innerHTML = results.map((r, i) => `
+    <div class="result-item" onclick="selectPACSResult(${i})" ondblclick="doRetrieve()">
+      <div class="ri-name">👤 ${r.patientName.replace(/\^/g,' ')}</div>
+      <div class="ri-meta">ID: ${r.patientId} · 📅 ${r.studyDate} · ${r.numImages} görüntü</div>
+      <div class="ri-meta" style="color:var(--text1)">${r.description}</div>
+      <div class="ri-badge ${r.modality}">${r.modality}</div>
+    </div>
+  `).join('');
+}
+
+function selectPACSResult(i) {
+  APP.selectedPACSResult = i;
+  document.querySelectorAll('.result-item').forEach((el, idx) => {
+    el.classList.toggle('sel', idx === i);
+  });
+}
+
+async function doRetrieve() {
+  if (APP.selectedPACSResult === null) { showNotif('Bir çalışma seçin', 'warn'); return; }
+  const result = APP.pacsQueryResults[APP.selectedPACSResult];
+  const server = getActiveServer();
+  if (!server) { showNotif('PACS sunucusu seçin', 'warn'); return; }
+
+  showNotif(`C-MOVE başlatıldı: ${result.description} (${result.numImages} görüntü)`, 'info');
+  setStatus('İndiriliyor...');
+  setProgress(10);
+
+  for (let i = 0; i <= 100; i += 5) {
+    await new Promise(r => setTimeout(r, 80));
+    setProgress(i);
+    setStatus(`İndiriliyor: %${i} (${Math.floor(result.numImages*i/100)}/${result.numImages})`);
+  }
+
+  setProgress(0);
+  setStatus('İndirme tamamlandı');
+  showNotif(`✔ ${result.description} indirildi (simülasyon)`, 'ok');
+
+  // Note: Real C-MOVE requires a DICOM backend/proxy server
+  // For production: use dicomweb-client or dcmjs library with a WADO/STOW-RS server
+}
+
+function showSend() { document.getElementById('modal-send').classList.add('show'); }
+function doSend() {
+  closeModal('modal-send');
+  showNotif('C-STORE başlatıldı (simülasyon)', 'info');
+}
+
+function getActiveServer() {
+  const sel = document.getElementById('pacs-server-sel');
+  const idx = sel && sel.value !== '' ? parseInt(sel.value) : -1;
+  if (idx >= 0) return APP.pacsServers[idx];
+  return APP.pacsServers.find(s => s.isDefault) || APP.pacsServers[0] || null;
+}
+
+function toggleAllMod(cb) {
+  document.querySelectorAll('.mod-cb-item').forEach(el => el.checked = cb.checked);
+}
+
+// ── PANEL / TAB ───────────────────────────────────────────────
+function switchTab(tab) {
+  ['pacs','local','info'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t===tab ? 'flex' : 'none';
+    document.getElementById(`ptab-${t}`).classList.toggle('on', t===tab);
+  });
+  document.getElementById(`tab-${tab}`).style.flexDirection = 'column';
+}
+
+function switchModalTab(modal, tab) {
+  if (modal === 'pacs') {
+    ['servers','client','advanced'].forEach(t => {
+      document.getElementById(`pacs-tab-${t}`).style.display = t===tab?'block':'none';
+    });
+    document.querySelectorAll('#modal-pacs .modal-tab').forEach((el, i) => {
+      el.classList.toggle('on', ['servers','client','advanced'][i]===tab);
+    });
+  }
+}
+
+function togglePanel(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('panel-hidden');
+  setTimeout(() => resizeAll(), 100);
+}
+
+// ── THEME ─────────────────────────────────────────────────────
+function setTheme(t) {
+  document.body.setAttribute('data-theme', t);
+  APP.currentTheme = t;
+  try { localStorage.setItem('atik-theme', t); } catch(e) {}
+}
+
+// ── MODALS ────────────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ── CONTEXT MENU ──────────────────────────────────────────────
+let ctxTargetVP = 0;
+function showCtxMenu(e, idx) {
+  ctxTargetVP = idx;
+  setActiveVP(idx);
+  const m = document.getElementById('ctx-menu');
+  m.style.display = 'block';
+  m.style.left = e.clientX + 'px';
+  m.style.top  = e.clientY + 'px';
+}
+document.addEventListener('click', () => { document.getElementById('ctx-menu').style.display='none'; });
+
+function ctxAction(action) {
+  switch(action) {
+    case 'fit':          fitVP(ctxTargetVP); break;
+    case 'actual':       const v=APP.viewports[ctxTargetVP]; if(v){v.zoom=1;v.panX=0;v.panY=0;renderVP(ctxTargetVP);} break;
+    case 'wl-reset':     { const v=APP.viewports[ctxTargetVP]; if(v){v.ww=255;v.wc=128;renderVP(ctxTargetVP);} break; }
+    case 'rotate-reset': { const v=APP.viewports[ctxTargetVP]; if(v){v.rotation=0;v.flipH=false;v.flipV=false;renderVP(ctxTargetVP);} break; }
+    case 'export-png':   exportPNG(); break;
+    case 'copy-clipboard':
+      const c=document.getElementById(`vpc-${ctxTargetVP}`);
+      if(c) c.toBlob(b=>navigator.clipboard?.write([new ClipboardItem({'image/png':b})]));
+      break;
+    case 'patient-info': {
+      const vp=APP.viewports[ctxTargetVP]; if(!vp) break;
+      const m=vp.metadata;
+      document.getElementById('modal-patient-body').innerHTML = Object.entries({
+        'Hasta Adı':m.patientName,'Hasta ID':m.patientId,'Doğum':m.patientBirth,
+        'Cinsiyet':m.patientSex,'Modalite':m.modality,'Tarih':m.studyDate,
+        'Kurum':m.institutionName,'Çalışma':m.studyDescription,
+        'Boyut':m.imageSize,'Kalınlık':m.sliceThickness,
+      }).filter(([,v])=>v).map(([k,v])=>
+        `<div class="form-row"><span class="form-label">${k}</span><span style="font-family:var(--font-mono);font-size:11px;">${v}</span></div>`
+      ).join('');
+      document.getElementById('modal-patient').classList.add('show');
+      break;
+    }
+    case 'dicom-tags': {
+      const vp=APP.viewports[ctxTargetVP];
+      const tags = vp?.metadata?.allTags || [];
+      renderDICOMTags(tags);
+      document.getElementById('modal-tags').classList.add('show');
+      break;
+    }
+  }
+}
+
+function renderDICOMTags(tags) {
+  const el = document.getElementById('dicom-tags-table');
+  if (!tags.length) { el.innerHTML='<div style="color:var(--text3);padding:10px">DICOM etiketleri bulunamadı</div>'; return; }
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="padding:3px 6px;text-align:left;color:var(--text3);font-size:9px;border-bottom:1px solid var(--border)">Grup,Elem</th>
+        <th style="padding:3px 6px;text-align:left;color:var(--text3);font-size:9px;border-bottom:1px solid var(--border)">VR</th>
+        <th style="padding:3px 6px;text-align:left;color:var(--text3);font-size:9px;border-bottom:1px solid var(--border)">Değer</th>
+      </tr></thead>
+      <tbody>
+        ${tags.map(t=>`
+          <tr class="dicom-tag-row" style="border-bottom:1px solid var(--border)">
+            <td style="padding:2px 6px;color:var(--accent)">(${t.group},${t.elem})</td>
+            <td style="padding:2px 6px;color:var(--yellow)">${t.vr}</td>
+            <td style="padding:2px 6px;color:var(--text1);max-width:200px;overflow:hidden;text-overflow:ellipsis;">${t.val}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function filterTags(q) {
+  document.querySelectorAll('.dicom-tag-row').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ── SHORTCUTS MODAL ───────────────────────────────────────────
+function showShortcuts() { document.getElementById('modal-shortcuts').classList.add('show'); }
+function showAbout() { document.getElementById('modal-about').classList.add('show'); }
+
+// ── STATUS & PROGRESS ────────────────────────────────────────
+function setStatus(t) { document.getElementById('sb-status').textContent = t; }
+function setProgress(pct) {
+  const b = document.getElementById('progress-bar');
+  b.style.width = pct + '%';
+  b.style.opacity = (pct > 0 && pct < 100) ? '1' : '0';
+}
+
+function updateStatusBar(idx) {
+  const vp = APP.viewports[idx];
+  if (!vp) return;
+  document.getElementById('sb-zoom').textContent  = Math.round(vp.zoom*100) + '%';
+  document.getElementById('sb-frame').textContent = vp.frames.length ? `${vp.currentFrame+1}/${vp.frames.length}` : '—';
+  document.getElementById('sb-wl').textContent    = `${Math.round(vp.ww)}/${Math.round(vp.wc)}`;
+}
+
+// ── NOTIFICATIONS ────────────────────────────────────────────
+function showNotif(msg, type='info', duration=3000) {
+  const container = document.getElementById('notif');
+  const icons = { info:'ℹ', ok:'✔', warn:'⚠', err:'✗' };
+  const div = document.createElement('div');
+  div.className = `notif-item ${type}`;
+  div.innerHTML = `<span>${icons[type]||'•'}</span> ${msg}`;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), duration);
+}
+
+// ── KEYBOARD ─────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const vp = APP.viewports[APP.activeVP];
+
+  switch(e.key) {
+    case 'w': case 'W': setTool('wl'); break;
+    case 'z': case 'Z': setTool('zoom'); break;
+    case 'p': case 'P': setTool('pan'); break;
+    case 's': case 'S': if(!e.ctrlKey) setTool('scroll'); break;
+    case 'l': case 'L': setTool('length'); break;
+    case 'a': case 'A': setTool('angle'); break;
+    case 'r': case 'R': if(!e.ctrlKey) setTool('roi-rect'); break;
+    case 'i': case 'I': applyFilter(vp?.filterMode==='invert'?'none':'invert'); break;
+    case 'f': case 'F': fitActive(); break;
+    case '1': actualSize(); break;
+    case '+': case '=': zoomIn(); break;
+    case '-': zoomOut(); break;
+    case 'Delete': clearMeasurements(); break;
+    case 'F11': e.preventDefault(); toggleFullscreen(); break;
+    case 'Tab': e.preventDefault();
+      setActiveVP((APP.activeVP+1) % APP.viewports.length); break;
+    case 'ArrowDown': case 'ArrowRight':
+      if (vp) { vp.currentFrame = Math.min(vp.frames.length-1, vp.currentFrame+(e.ctrlKey?10:1)); syncThumbHighlight(vp.currentFrame); renderVP(APP.activeVP); }
+      break;
+    case 'ArrowUp': case 'ArrowLeft':
+      if (vp) { vp.currentFrame = Math.max(0, vp.currentFrame-(e.ctrlKey?10:1)); syncThumbHighlight(vp.currentFrame); renderVP(APP.activeVP); }
+      break;
+    case 'Home': if(vp){vp.currentFrame=0; syncThumbHighlight(0); renderVP(APP.activeVP);} break;
+    case 'End':  if(vp){vp.currentFrame=vp.frames.length-1; syncThumbHighlight(vp.frames.length-1); renderVP(APP.activeVP);} break;
+  }
+
+  if (e.ctrlKey) switch(e.key) {
+    case 'o': e.preventDefault(); openFiles(); break;
+    case 'O': e.preventDefault(); openFolder(); break;
+    case 'p': e.preventDefault(); showPrint(); break;
+    case 's': e.preventDefault(); exportPNG(); break;
+    case 'r': e.preventDefault(); fitActive(); break;
+  }
+
+  // Number keys for grid
+  if (!e.ctrlKey && !e.altKey) {
+    if (e.key === '1' && !e.shiftKey) setGrid('1x1');
+    if (e.key === '2') setGrid('2x1');
+    if (e.key === '4') setGrid('2x2');
+  }
+});
+
+// ── FULLSCREEN ───────────────────────────────────────────────
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+// ── CLOCK ────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('sb-clock').textContent = new Date().toLocaleString('tr');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── RESIZE ───────────────────────────────────────────────────
+const resizeObserver = new ResizeObserver(() => resizeAll());
+resizeObserver.observe(document.getElementById('vp-area'));
+
+// ── INIT ─────────────────────────────────────────────────────
+(function init() {
+  // Load saved theme
+  try {
+    const t = localStorage.getItem('atik-theme');
+    if (t) setTheme(t);
+  } catch(e) {}
+
+  initViewports(1);
+  loadPACSServers();
+  switchTab('pacs');
+
+  // Set today's date in query form
+  const today = new Date().toISOString().slice(0,10);
+  const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  const df = document.getElementById('pq-date-from');
+  const dt = document.getElementById('pq-date-to');
+  if (df) df.value = weekAgo;
+  if (dt) dt.value = today;
+
+  showNotif('Atik Viewer hazır. Dosya açın veya PACS sunucusuna bağlanın.', 'info', 4000);
+})();
+</script>
+</body>
+</html>

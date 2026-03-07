@@ -1,0 +1,23 @@
+{
+  "name": "atik-viewer",
+  "version": "1.1.0",
+  "description": "ATİK VİEWER — Tıbbi Görüntüleme Sistemi + PACS Proxy",
+  "main": "server.js",
+  "scripts": {
+    "start":     "node server.js",
+    "dev":       "nodemon server.js",
+    "install-dicom": "npm install dicom-dimse"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "optionalDependencies": {
+    "dicom-dimse": "^0.5.x"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": ["dicom", "pacs", "medical", "imaging", "viewer"],
+  "author": "Mustafa UYGUR",
+  "license": "MIT"
+}
