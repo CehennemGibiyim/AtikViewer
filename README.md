@@ -1,4 +1,6 @@
 
+Resimli anlatım için alttaki bulunan adrese giriniz.
+https://cehennemgibiyim.github.io/AtikViewer/  
 ⊕ ATİK VİEWER
 
 Tıbbi Görüntüleme Sistemi — Kurulum ve Kullanım Kılavuzu
