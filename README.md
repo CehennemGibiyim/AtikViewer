@@ -100,7 +100,33 @@ Proxy sunucusunu kapatmak için komut penceresini kapatmanız yeterlidir. Bilgis
 Arayüz Tanıtımı
 ---------------
 
-⊕ ATİK VİEWER v1.0.0 TEMA: ● ○ ◑ ◐ Dosya Görünüm Araçlar Filtreler Pencere PACS Yardım PACS DÜZEN 1x1 2x1 2x2 1x3 2x3 MOD MPR 3D | ARAÇ 🌓 🔍 ✋ ↕ | ÖLÇÜM 📏 📐 ⬜ ⭕ | DÖNDÜR | ZOOM | 1:1 | PRESET ABD AKC KEM BEY | FİLTRE | ORJ PACS LOKAL BİLGİ 🔌 PACS SUNUCUSU Sunucu: ARTVIN PACS (10.8.64.8:4006) 🔌 Test ⚙ Ayarlar 🔍 HASTA / ÇALIŞMA SORGUSU Hasta Adı Hasta ID Tarih Modalite ✓CT ✓MR ✓CR ✓US ✓XA 🔍 SORGULA (C-FIND) ⬇ SEÇİLİ ÇALIŞMAYI İNDİR SONUÇLAR 👤 UYGUR MUSTAFA ID: 43621 · 2024-05-08 · 🖼 274 görüntü BT Servikal Vertebra CT ▶ Görüntüle 👤 ÇELİK FATİH ID: 51203 · 2024-03-15 · 🖼 45 görüntü Akciğer PA MUSTAFA UYGUR 43621 17.09.1982 · 41Y M 08.05.2024 W: 400 L: 40 Zoom: 1.00× IMA: 47/274 Artvin Devlet Hast. BT Servikal Vertebra CT 🖼 SERİ 274 görüntü 1/274 2/274 PACS: ARTVIN PACS (C-ECHO OK) Modality: CT W/L: 400/40 Zoom: 1.0× Kare: 47/274
+⊕ ATİK VİEWER v1.0.0 TEMA:
+
+● ○ ◑ ◐ Dosya Görünüm Araçlar Filtreler Pencere PACS Yardım PACS DÜZEN 1x1 2x1 2x2 1x3 2x3 MOD MPR 3D | 
+
+ARAÇ 🌓 🔍 ✋ ↕ | ÖLÇÜM 📏 📐 ⬜ ⭕ | DÖNDÜR | ZOOM | 1:1 | 
+
+PRESET ABD AKC KEM BEY | FİLTRE | ORJ PACS LOKAL BİLGİ 
+
+🔌 PACS SUNUCUSU Sunucu: Örnek PACS (1.1.1.1:8080) 
+
+🔌 Test ⚙ Ayarlar 
+
+🔍 HASTA / ÇALIŞMA SORGUSU Hasta Adı Hasta ID Tarih Modalite ✓CT ✓MR ✓CR ✓US ✓XA 
+
+🔍 SORGULA (C-FIND) ⬇ SEÇİLİ ÇALIŞMAYI İNDİR SONUÇLAR 
+
+👤 UYGUR MUSTAFA ID: 43621 · 2024-05-08 · 
+
+🖼 274 görüntü BT Servikal Vertebra CT ▶ Görüntüle 
+
+👤 ÇELİK FATİH ID: 51203 · 2024-03-15 · 
+
+🖼 45 görüntü Akciğer PA MUSTAFA UYGUR 43621 17.09.1982 · 
+
+41Y M 08.05.2024 W: 400 L: 40 Zoom: 1.00× IMA: 47/274 Artvin Devlet Hast. BT Servikal Vertebra CT 
+
+🖼 SERİ 274 görüntü 1/274 2/274 PACS: ARTVIN PACS (C-ECHO OK) Modality: CT W/L: 400/40 Zoom: 1.0× Kare: 47/274
 
 Şekil 1 — Atik Viewer Ana Arayüzü · Koyu tema, PACS bağlı, CT görüntü yüklü
 
