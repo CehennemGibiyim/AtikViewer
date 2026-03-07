@@ -1,3 +1,4 @@
+Ekran Görünümü >>> https://cehennemgibiyim.github.io/AtikViewer/atik-viewer.html <<< 
 
 Resimli anlatım için bulunan adrese giriniz.>>> https://cehennemgibiyim.github.io/AtikViewer/ <<<
 
