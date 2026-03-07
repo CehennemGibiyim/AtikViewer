@@ -32,7 +32,7 @@ atik-viewer.html dosyasını indirin
 
 Releases sayfasından veya doğrudan GitHub'dan indirin.
 
-https://github.com/CehennemGibiyim/AtikAnaliz
+https://github.com/CehennemGibiyim/AtikViewer
 
 2
 
@@ -56,7 +56,7 @@ Gerçek PACS sorgusu (C-FIND / WADO-RS) için Node.js proxy gereklidir. CORS eng
 
 Tüm dosyalar aynı dizinde olmalıdır:
 
-📁 AtikAnaliz/
+📁 AtikViewer/
 
   ├── atik-viewer.html ← Ana uygulama
 
@@ -452,6 +452,6 @@ Windows 10/11
 
 ATİK VİEWER v1.1.0 — Mustafa UYGUR
 
-[GitHub: CehennemGibiyim/AtikAnaliz](https://github.com/CehennemGibiyim/AtikAnaliz)
+[GitHub: CehennemGibiyim/AtikViewer](https://github.com/CehennemGibiyim/AtikViewer)
 
 Tıbbi karar vermek için değil, görüntüleme ve inceleme amaçlıdır.
