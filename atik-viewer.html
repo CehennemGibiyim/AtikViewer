@@ -1016,7 +1016,7 @@ kbd{
       <div class="dz-btn-row">
         <button class="dz-btn" onclick="openFiles()">📂 Dosya Aç</button>
         <button class="dz-btn sec" onclick="openFolder()">📁 Klasör Aç</button>
-        <button class="dz-btn" style="background:rgba(168,85,247,.08);border-color:#6633aa;color:var(--purple);" onclick="switchTab('pacs');showNotif('PACS sunucu ayarlarını yapılandırın','info')">🔌 PACS Bağlan</button>
+        <button class="dz-btn" style="background:rgba(168,85,247,.08);border-color:#6633aa;color:var(--purple);" onclick="switchTab('pacs');testPACSConnection()">🔌 PACS Bağlan</button>
       </div>
       <div class="dz-formats">
         DICOM (.dcm, .dicom) · JPEG · PNG · BMP · TIFF · NIfTI (.nii, .nii.gz)<br>
@@ -2841,27 +2841,38 @@ async function testPACSConnection() {
   refreshPACSServerList();
   document.getElementById('pacs-conn-dot').className = 'sb-conn-dot';
 
-  // Simulate DICOM C-ECHO (real network not available in browser without backend)
-  await new Promise(r => setTimeout(r, 1500 + Math.random()*500));
-
-  // Since we're in browser, we can't do real DICOM TCP — show realistic simulation
-  const success = server.ip && server.ae;
-  server.status = success ? 'ok' : 'err';
-  APP.pacsConnected = success;
-
-  refreshPACSServerList();
-  document.getElementById('pacs-conn-dot').className = 'sb-conn-dot ' + (success?'ok':'err');
-  document.getElementById('pacs-conn-label').textContent = success ? `${server.desc} (C-ECHO OK)` : 'Bağlantı Hatası';
-  showNotif(success ? `✔ C-ECHO başarılı: ${server.desc}` : '✗ C-ECHO başarısız', success?'ok':'err');
+  try {
+    const r = await fetch(`/api/pacs/echo?ip=${encodeURIComponent(server.ip)}&port=${server.port}&ae=${encodeURIComponent(server.ae)}`);
+    const data = await r.json();
+    server.status = data.ok ? 'ok' : 'err';
+    APP.pacsConnected = data.ok;
+    refreshPACSServerList();
+    document.getElementById('pacs-conn-dot').className = 'sb-conn-dot ' + (data.ok?'ok':'err');
+    document.getElementById('pacs-conn-label').textContent = data.ok ? `${server.desc} (Baglanti OK)` : 'Baglanti Hatasi';
+    showNotif(data.ok ? `✔ ${server.desc} baglanti OK` : `✗ ${data.msg}`, data.ok?'ok':'err');
+  } catch(e) {
+    server.status = 'err';
+    refreshPACSServerList();
+    document.getElementById('pacs-conn-dot').className = 'sb-conn-dot err';
+    document.getElementById('pacs-conn-label').textContent = 'Proxy Hatasi';
+    showNotif('✗ Proxy sunucusuna ulasilamiyor. BASLAT.bat calisiyor mu?', 'err');
+  }
 }
 
 async function testSelectedPACS() {
   if (APP.editingServerIdx < 0) { showNotif('Bir sunucu seçin','warn'); return; }
   const s = APP.pacsServers[APP.editingServerIdx];
   s.status = 'testing'; refreshPACSServerList();
-  await new Promise(r => setTimeout(r, 1200));
-  s.status = 'ok'; refreshPACSServerList();
-  showNotif(`C-ECHO OK: ${s.desc}`, 'ok');
+  try {
+    const r = await fetch(`/api/pacs/echo?ip=${encodeURIComponent(s.ip)}&port=${s.port}&ae=${encodeURIComponent(s.ae)}`);
+    const data = await r.json();
+    s.status = data.ok ? 'ok' : 'err';
+    refreshPACSServerList();
+    showNotif(data.ok ? `✔ ${s.desc} baglanti OK` : `✗ ${data.msg}`, data.ok?'ok':'err');
+  } catch(e) {
+    s.status = 'err'; refreshPACSServerList();
+    showNotif('✗ Proxy sunucusuna ulasilamiyor', 'err');
+  }
 }
 
 async function doPACSQuery() {
@@ -2879,18 +2890,38 @@ async function doPACSQuery() {
   document.getElementById('pacs-result-count').textContent = 'Sorgulanıyor...';
   setStatus(`C-FIND sorgusu: ${server.desc}`);
 
-  // Simulate C-FIND response (real DICOM network not available in browser)
-  await new Promise(r => setTimeout(r, 800 + Math.random()*600));
-
-  // Generate demo results
-  const results = generateDemoPatients(name, id, mods, 8 + Math.floor(Math.random()*12));
-  APP.pacsQueryResults = results;
-  renderPACSResults(results);
-
-  document.getElementById('pacs-spinner').style.display = 'none';
-  document.getElementById('pacs-result-count').textContent = results.length + ' kayıt';
-  setStatus(`${results.length} sonuç bulundu`);
-  showNotif(`${results.length} hasta/çalışma bulundu`, 'ok');
+  try {
+    const resp = await fetch('/api/pacs/find', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        serverIp: server.ip, serverPort: server.port,
+        serverAE: server.ae, clientAE: 'ATIKVIEWER',
+        patientName: name, patientId: id,
+        accessionNumber: acc, dateFrom: from, dateTo: to,
+        modality: mods.join('\\'),
+      })
+    });
+    const data = await resp.json();
+    document.getElementById('pacs-spinner').style.display = 'none';
+    if (data.ok && data.results && data.results.length > 0) {
+      APP.pacsQueryResults = data.results;
+      renderPACSResults(data.results);
+      document.getElementById('pacs-result-count').textContent = data.results.length + ' kayıt';
+      setStatus(`${data.results.length} sonuç bulundu`);
+      showNotif(`✔ ${data.results.length} hasta/çalışma bulundu`, 'ok');
+    } else {
+      APP.pacsQueryResults = [];
+      renderPACSResults([]);
+      document.getElementById('pacs-result-count').textContent = '0 kayıt';
+      setStatus('Sonuç bulunamadı');
+      showNotif(data.msg || 'Sonuç bulunamadı', 'warn');
+    }
+  } catch(e) {
+    document.getElementById('pacs-spinner').style.display = 'none';
+    document.getElementById('pacs-result-count').textContent = 'Hata';
+    showNotif('✗ Proxy sunucusuna ulasilamiyor. BASLAT.bat calisiyor mu?', 'err');
+  }
 }
 
 function generateDemoPatients(nameFilter, idFilter, mods, count) {
@@ -2949,28 +2980,34 @@ async function doRetrieve() {
   const server = getActiveServer();
   if (!server) { showNotif('PACS sunucusu seçin', 'warn'); return; }
 
-  showNotif(`C-MOVE başlatıldı: ${result.description} (${result.numImages} görüntü)`, 'info');
-  setStatus('İndiriliyor...');
-  setProgress(10);
-
-  for (let i = 0; i <= 100; i += 5) {
-    await new Promise(r => setTimeout(r, 80));
-    setProgress(i);
-    setStatus(`İndiriliyor: %${i} (${Math.floor(result.numImages*i/100)}/${result.numImages})`);
+  showNotif(`WADO-RS sorgulanıyor: ${result.description}`, 'info');
+  setStatus('WADO-RS sorgulanıyor...');
+  setProgress(20);
+  try {
+    const params = new URLSearchParams({ serverIp: server.ip, serverPort: server.port, studyUID: result.studyUID });
+    const r = await fetch(`/api/pacs/wado?${params}`);
+    const data = await r.json();
+    setProgress(80);
+    if (data.ok) {
+      setProgress(100);
+      setTimeout(() => setProgress(0), 1000);
+      setStatus(`Hazır: ${result.description}`);
+      showNotif(`✔ ${result.description} WADO-RS ile alındı`, 'ok');
+    } else {
+      setProgress(0);
+      setStatus('WADO-RS desteklenmiyor');
+      showNotif(`WADO-RS desteklenmiyor: ${data.msg}`, 'warn');
+    }
+  } catch(e) {
+    setProgress(0);
+    showNotif('✗ Proxy hatası: ' + e.message, 'err');
   }
-
-  setProgress(0);
-  setStatus('İndirme tamamlandı');
-  showNotif(`✔ ${result.description} indirildi (simülasyon)`, 'ok');
-
-  // Note: Real C-MOVE requires a DICOM backend/proxy server
-  // For production: use dicomweb-client or dcmjs library with a WADO/STOW-RS server
 }
 
 function showSend() { document.getElementById('modal-send').classList.add('show'); }
 function doSend() {
   closeModal('modal-send');
-  showNotif('C-STORE başlatıldı (simülasyon)', 'info');
+  showNotif('C-STORE: STOW-RS desteği sunucu tarafında gerektirir.', 'info');
 }
 
 function getActiveServer() {
@@ -3215,6 +3252,11 @@ resizeObserver.observe(document.getElementById('vp-area'));
   if (dt) dt.value = today;
 
   showNotif('Atik Viewer hazır. Dosya açın veya PACS sunucusuna bağlanın.', 'info', 4000);
+  fetch('/api/health').then(r => r.json()).then(d => {
+    if (d.ok) showNotif('✔ Proxy sunucusu aktif', 'ok', 3000);
+  }).catch(() => {
+    showNotif('⚠ Proxy bulunamadı — BASLAT.bat çalıştırın', 'warn', 6000);
+  });
 })();
 </script>
 </body>
