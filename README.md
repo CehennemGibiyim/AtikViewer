@@ -190,7 +190,7 @@ Akgun, DCM4CHEE, Orthanc ve DICOMweb destekli PACS sistemleri
 
 ### PACS Sunucu Ayarları
 
-⚙ PACS Bağlantı Ayarları ● ARTVIN PACS 10.8.64.8:4006 ○ RIZE PACS ○ TEST SERVER \+ Ekle ✏ Düzenle ✕ Sil Sunucu Açıklaması ARTVIN PACS IP Adresi 10.8.64.8 AE Title DCM\_SERVER Port 4006 🔌 Test Et ✔ Kaydet C-ECHO başarılı — ARTVIN PACS bağlı
+⚙ PACS Bağlantı Ayarları ● ARTVIN PACS 127.0.0.1:5656 ○ RIZE PACS ○ TEST SERVER \+ Ekle ✏ Düzenle ✕ Sil Sunucu Açıklaması ARTVIN PACS IP Adresi 127.0.0.1 AE Title DCM_SERVERismi Port 5656 🔌 Test Et ✔ Kaydet C-ECHO başarılı — ARTVIN PACS bağlı
 
 Şekil 3 — PACS Sunucu Ayarları ekranı. PACS menüsü → PACS Sunucu Ayarları veya Sol panel → Ayarlar butonu
 
