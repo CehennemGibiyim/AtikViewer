@@ -1202,10 +1202,10 @@ kbd{
     <div class="modal-hdr">PACS Sunucusu <span id="server-edit-mode">Ekle</span> <span class="modal-close" onclick="closeModal('modal-server-edit')">✕</span></div>
     <div class="modal-body">
       <div class="form-row"><div class="form-label">Açıklama</div><input class="form-input" id="se-desc" placeholder="Örn: ARTVIN PACS"></div>
-      <div class="form-row"><div class="form-label">IP / Hostname</div><input class="form-input" id="se-ip" placeholder="10.8.64.8"></div>
+      <div class="form-row"><div class="form-label">IP / Hostname</div><input class="form-input" id="se-ip" placeholder="127.0.0.1"></div>
       <div class="form-row"><div class="form-label">AE Title</div><input class="form-input" id="se-ae" placeholder="DCM_SERVER"></div>
-      <div class="form-row"><div class="form-label">Port</div><input class="form-input" id="se-port" type="number" value="4006"></div>
-      <div class="form-row"><div class="form-label">C-Move Port</div><input class="form-input" id="se-cmove" type="number" value="4006"></div>
+      <div class="form-row"><div class="form-label">Port</div><input class="form-input" id="se-port" type="number" value="5656"></div>
+      <div class="form-row"><div class="form-label">C-Move Port</div><input class="form-input" id="se-cmove" type="number" value="5656"></div>
       <div class="form-row">
         <div class="form-label">C-Move Etkin</div>
         <input type="checkbox" id="se-cmove-en" checked style="accent-color:var(--accent);width:16px;height:16px;">
@@ -2720,8 +2720,8 @@ function loadPACSServers() {
   // Add demo server if empty
   if (!APP.pacsServers.length) {
     APP.pacsServers = [{
-      id: 1, desc: 'ARTVIN PACS', ip: '10.8.64.8',
-      ae: 'DCM_SERVER', port: 4006, cmovePort: 4006,
+      id: 1, desc: 'ARTVIN PACS', ip: '127.0.01',
+      ae: 'DCM_SERVER', port: 5656, cmovePort: 5656,
       cmoveEnabled: true, isDefault: true, status: 'unknown',
     }];
   }
@@ -2798,8 +2798,8 @@ function saveServer() {
     desc: document.getElementById('se-desc').value.trim() || 'PACS',
     ip:   document.getElementById('se-ip').value.trim(),
     ae:   document.getElementById('se-ae').value.trim().toUpperCase(),
-    port: parseInt(document.getElementById('se-port').value)||4006,
-    cmovePort: parseInt(document.getElementById('se-cmove').value)||4006,
+    port: parseInt(document.getElementById('se-port').value)||5656,
+    cmovePort: parseInt(document.getElementById('se-cmove').value)||5656,
     cmoveEnabled: document.getElementById('se-cmove-en').checked,
     isDefault: document.getElementById('se-default').checked,
     status: 'unknown',
