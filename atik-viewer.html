@@ -115,7 +115,7 @@ input,select,textarea{font-family:var(--font-ui);font-size:12px;}
   border-radius:5px;min-width:200px;z-index:999;
   box-shadow:0 10px 30px rgba(0,0,0,.7);padding:4px 0;
 }
-.mn:hover .mn-drop{display:block;}
+.mn-drop.active{display:block;}
 .mni{
   padding:5px 14px;font-size:12px;color:var(--text2);
   cursor:pointer;display:flex;align-items:center;gap:8px;
@@ -1434,6 +1434,33 @@ const APP = {
   currentTheme: 'dark',
   editingServerIdx: -1,
 };
+
+// ── MENU CLICK HANDLERS ──────────────────────────────────────────
+function initMenuHandlers() {
+  const menuItems = document.querySelectorAll('.mn');
+  menuItems.forEach(menu => {
+    menu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close all other menus
+      menuItems.forEach(m => {
+        if (m !== menu) {
+          m.querySelector('.mn-drop').classList.remove('active');
+        }
+      });
+      // Toggle current menu
+      const dropdown = menu.querySelector('.mn-drop');
+      dropdown.classList.toggle('active');
+    });
+  });
+  
+  // Close menus when clicking outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.mn-drop').forEach(d => d.classList.remove('active'));
+  });
+}
+
+// Initialize menu handlers when DOM is ready
+document.addEventListener('DOMContentLoaded', initMenuHandlers);
 
 const WL_PRESETS = {
   abdomen:    { ww:400,  wc:40   },
