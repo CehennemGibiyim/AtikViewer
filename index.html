@@ -205,7 +205,7 @@
   <div class="hero-sub">Tıbbi Görüntüleme Sistemi — Kurulum ve Kullanım Kılavuzu</div>
   <div class="badge-row">
     <span class="badge badge-cyan">v1.1.0 BETA</span>
-    <span class="badge badge-green">Sıfır Bağımlılık (HTML Modu)</span>
+    <span class="badge badge-green">Yerel paketli HTML modu</span>
     <span class="badge badge-purple">Node.js Proxy Modu</span>
     <span class="badge badge-yellow">DICOM · JPEG · PNG · NIfTI</span>
   </div>
@@ -213,6 +213,11 @@
 
 <!-- ══════════════════════ CONTAINER ══════════════════════ -->
 <div class="container">
+
+  <div class="alert alert-red" role="note" aria-label="Tıbbi kullanım uyarısı">
+    <span class="alert-icon">⚠️</span>
+    <div class="alert-body"><strong>Geliştirme/prototip uyarısı:</strong> Bu yazılım klinik olarak doğrulanmış bir tanı sistemi değildir; tek başına tanı veya tedavi kararı için kullanılmamalıdır. GitHub Pages statik görüntüleyici ve kılavuzu sunar; sunucu tarafında PACS proxy’si veya çalışan AI yoktur. Görüntüleyicide yerel seçilen dosyalar bu sayfaya yüklenmez. Gerçek hasta verilerini herkese açık GitHub deposuna veya Issues'a eklemeyin.</div>
+  </div>
 
   <!-- İçindekiler -->
   <div class="toc">
@@ -225,6 +230,7 @@
       <li><a href="#araclar">Görüntüleme Araçları</a></li>
       <li><a href="#kisayollar">Klavye Kısayolları</a></li>
       <li><a href="#sorun">Sorun Giderme</a></li>
+      <li><a href="#ai-gizlilik">Yerel AI, gizlilik ve insan denetimi</a></li>
     </ol>
   </div>
 
@@ -245,9 +251,9 @@
       <div class="step">
         <div class="step-n">1</div>
         <div class="step-body">
-          <div class="step-title">atik-viewer.html dosyasını indirin</div>
-          <div class="step-desc">Releases sayfasından veya doğrudan GitHub'dan indirin.</div>
-          <div class="step-code">https://github.com/CehennemGibiyim/AtikAnaliz</div>
+          <div class="step-title">Depo ZIP dosyasını indirin</div>
+          <div class="step-desc"><code>atik-viewer.html</code> ile birlikte <code>vendor/</code> klasörünü de indirin; Three.js yerel olarak buradan yüklenir.</div>
+          <div class="step-code">https://github.com/CehennemGibiyim/AtikViewer</div>
         </div>
       </div>
       <div class="step">
@@ -274,14 +280,15 @@
       <div class="step">
         <div class="step-n">1</div>
         <div class="step-body">
-          <div class="step-title">4 dosyayı aynı klasöre koyun</div>
-          <div class="step-desc">Tüm dosyalar aynı dizinde olmalıdır:</div>
+          <div class="step-title">Projeyi klasör yapısıyla birlikte çıkarın</div>
+          <div class="step-desc">ZIP içindeki <code>vendor/</code> ve kaynak dosyalarını taşımayın veya yeniden adlandırmayın:</div>
           <div class="file-tree">
-            <div><span class="ft-dir">📁 AtikAnaliz/</span></div>
+            <div><span class="ft-dir">📁 AtikViewer/</span></div>
             <div>&nbsp;&nbsp;├── <span class="ft-imp">atik-viewer.html</span> <span class="ft-note">← Ana uygulama</span></div>
-            <div>&nbsp;&nbsp;├── <span class="ft-imp">server.js</span>         <span class="ft-note">← Proxy sunucusu</span></div>
-            <div>&nbsp;&nbsp;├── <span class="ft-file">package.json</span>     <span class="ft-note">← Bağımlılık tanımı</span></div>
-            <div>&nbsp;&nbsp;└── <span class="ft-imp">BASLAT.bat</span>        <span class="ft-note">← Windows başlatıcı</span></div>
+            <div>&nbsp;&nbsp;├── <span class="ft-dir">vendor/</span> <span class="ft-note">← Yerel Three.js</span></div>
+            <div>&nbsp;&nbsp;├── <span class="ft-imp">server.js</span> <span class="ft-note">← Yerel proxy</span></div>
+            <div>&nbsp;&nbsp;├── <span class="ft-file">package.json + lock</span></div>
+            <div>&nbsp;&nbsp;└── <span class="ft-imp">BASLAT.bat</span> <span class="ft-note">← Windows başlatıcı</span></div>
           </div>
         </div>
       </div>
@@ -297,14 +304,14 @@
         <div class="step-n">3</div>
         <div class="step-body">
           <div class="step-title">BASLAT.bat dosyasına çift tıklayın</div>
-          <div class="step-desc">İlk çalıştırmada npm install otomatik yapılır. Tarayıcı localhost:3000 adresinde açılır.</div>
+          <div class="step-desc">İlk çalıştırmada kilitli sürümlerle `npm ci` kurulur. Sunucu varsayılan olarak yalnızca bu bilgisayarda çalışır.</div>
         </div>
       </div>
       <div class="step">
         <div class="step-n">4</div>
         <div class="step-body">
           <div class="step-title">Tarayıcıda açın</div>
-          <div class="step-code">http://localhost:3000</div>
+          <div class="step-code">http://127.0.0.1:3000</div>
           <div class="step-desc" style="margin-top:6px;">BASLAT.bat bunu otomatik yapar. Siyah bir komut penceresi açık kaldığı sürece sunucu çalışır.</div>
         </div>
       </div>
@@ -335,7 +342,7 @@
 
         <!-- ─ Title bar ─ -->
         <rect x="0" y="0" width="900" height="26" fill="#040810"/>
-        <text x="14" y="17" fill="#00e5c8" font-size="11" font-weight="900" font-family="monospace" letter-spacing="2">⊕ ATİK VİEWER v1.0.0</text>
+        <text x="14" y="17" fill="#00e5c8" font-size="11" font-weight="900" font-family="monospace" letter-spacing="2">⊕ ATİK VİEWER v1.1.0</text>
         <text x="820" y="17" fill="#444" font-size="9" font-family="sans-serif">TEMA: ● ○ ◑ ◐</text>
 
         <!-- ─ Menu bar ─ -->
@@ -365,7 +372,7 @@
         <!-- PACS panel content -->
         <text x="10" y="120" fill="#445566" font-size="9" font-family="sans-serif">🔌 PACS SUNUCUSU</text>
         <rect x="8" y="126" width="234" height="18" rx="3" fill="#0d1a2a" stroke="#1e3050"/>
-        <text x="14" y="138" fill="#556688" font-size="9" font-family="sans-serif">Sunucu: ARTVIN PACS (127.0.0.1:5656)</text>
+        <text x="14" y="138" fill="#556688" font-size="9" font-family="sans-serif">Sunucu: DEMO PACS (127.0.0.1:5656)</text>
 
         <rect x="8" y="150" width="108" height="18" rx="3" fill="#0a2a1e" stroke="#1e5040"/>
         <text x="14" y="162" fill="#00c8a0" font-size="9" font-family="sans-serif">🔌 Test</text>
@@ -395,26 +402,26 @@
 
         <!-- Result items -->
         <rect x="8" y="325" width="234" height="44" rx="3" fill="#0a1a2e" stroke="#1e3050"/>
-        <text x="14" y="338" fill="#00e5c8" font-size="8" font-family="sans-serif">👤 UYGUR MUSTAFA</text>
-        <text x="14" y="349" fill="#556688" font-size="7" font-family="sans-serif">ID: 43621 · 2024-05-08 · 🖼 274 görüntü</text>
+        <text x="14" y="338" fill="#00e5c8" font-size="8" font-family="sans-serif">👤 ÖRNEK HASTA</text>
+        <text x="14" y="349" fill="#556688" font-size="7" font-family="sans-serif">ID: DEMO-0001 · 2000-01-01 · 🖼 274 görüntü</text>
         <text x="14" y="359" fill="#8899aa" font-size="7" font-family="sans-serif">BT Servikal Vertebra</text>
         <rect x="14" y="363" width="20" height="8" rx="2" fill="#1a3a2a"/>
         <text x="16" y="370" fill="#00c080" font-size="6" font-family="sans-serif">CT</text>
         <text x="196" y="370" fill="#00e5c8" font-size="7" font-family="sans-serif">▶ Görüntüle</text>
 
         <rect x="8" y="374" width="234" height="36" rx="3" fill="#0a1220" stroke="#1e2840"/>
-        <text x="14" y="386" fill="#9999cc" font-size="8" font-family="sans-serif">👤 ÇELİK FATİH</text>
-        <text x="14" y="396" fill="#445566" font-size="7" font-family="sans-serif">ID: 51203 · 2024-03-15 · 🖼 45 görüntü</text>
+        <text x="14" y="386" fill="#9999cc" font-size="8" font-family="sans-serif">👤 SENTETİK HASTA</text>
+        <text x="14" y="396" fill="#445566" font-size="7" font-family="sans-serif">ID: DEMO-0002 · 2000-01-02 · 🖼 45 görüntü</text>
         <text x="14" y="406" fill="#666688" font-size="7" font-family="sans-serif">Akciğer PA</text>
 
         <!-- ─ Main viewport ─ -->
         <rect x="250" y="78" width="510" height="422" fill="#050c14" stroke="#1e2d45" stroke-width="1"/>
 
         <!-- Patient info overlay -->
-        <text x="258" y="96" fill="#8899aa" font-size="8" font-family="monospace">MUSTAFA UYGUR</text>
-        <text x="258" y="107" fill="#8899aa" font-size="8" font-family="monospace">43621</text>
-        <text x="258" y="118" fill="#8899aa" font-size="8" font-family="monospace">17.09.1982 · 41Y M</text>
-        <text x="258" y="129" fill="#8899aa" font-size="8" font-family="monospace">08.05.2024</text>
+        <text x="258" y="96" fill="#8899aa" font-size="8" font-family="monospace">ÖRNEK HASTA</text>
+        <text x="258" y="107" fill="#8899aa" font-size="8" font-family="monospace">DEMO-0001</text>
+        <text x="258" y="118" fill="#8899aa" font-size="8" font-family="monospace">01.01.1970 · 56Y M</text>
+        <text x="258" y="129" fill="#8899aa" font-size="8" font-family="monospace">01.01.2000</text>
 
         <!-- Simulated CT image -->
         <ellipse cx="505" cy="290" rx="175" ry="185" fill="#0a1c0a"/>
@@ -430,7 +437,7 @@
         <text x="258" y="488" fill="#00e5c8" font-size="7" font-family="monospace">W: 400  L: 40</text>
         <text x="310" y="488" fill="#556688" font-size="7" font-family="monospace">Zoom: 1.00×</text>
         <text x="380" y="488" fill="#556688" font-size="7" font-family="monospace">IMA: 47/274</text>
-        <text x="700" y="96" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">Artvin Devlet Hast.</text>
+        <text x="700" y="96" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">DEMO HASTANESİ</text>
         <text x="700" y="107" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">BT Servikal Vertebra</text>
         <text x="700" y="118" fill="#8899aa" font-size="8" font-family="monospace" text-anchor="end">CT</text>
 
@@ -454,7 +461,7 @@
         <!-- ─ Status bar ─ -->
         <rect x="0" y="500" width="900" height="22" fill="#040810" stroke="#1e2d45" stroke-width="1"/>
         <circle cx="14" cy="511" r="4" fill="#00e5c8"/>
-        <text x="24" y="515" fill="#445566" font-size="8" font-family="sans-serif">PACS: ARTVIN PACS (C-ECHO OK)</text>
+        <text x="24" y="515" fill="#445566" font-size="8" font-family="sans-serif">PACS: DEMO PACS (TCP açık · DICOM C-ECHO doğrulanmadı)</text>
         <text x="240" y="515" fill="#445566" font-size="8" font-family="sans-serif">Modality: CT</text>
         <text x="330" y="515" fill="#445566" font-size="8" font-family="sans-serif">W/L: 400/40</text>
         <text x="420" y="515" fill="#445566" font-size="8" font-family="sans-serif">Zoom: 1.0×</text>
@@ -511,7 +518,7 @@
       <div class="section-num green">3</div>
       <div>
         <h2>Dosya Açma</h2>
-        <p style="margin:4px 0 0;font-size:13px;color:var(--text2);">DICOM, JPEG, PNG, BMP, TIFF, NIfTI formatları desteklenir</p>
+        <p style="margin:4px 0 0;font-size:13px;color:var(--text2);">DICOM, JPEG, PNG, BMP, TIFF ve NIfTI denenebilir; DICOM transfer syntax/codec desteği sınırlı olabilir.</p>
       </div>
     </div>
 
@@ -540,11 +547,11 @@
         <rect x="480" y="20" width="200" height="180" rx="10" fill="#0a1520" stroke="#3a1e50"/>
         <text x="580" y="48" fill="#a78bfa" font-size="11" font-weight="bold" text-anchor="middle" font-family="sans-serif">③ PACS'tan Çek</text>
         <rect x="510" y="70" width="140" height="16" rx="3" fill="#0d1a2a" stroke="#1e3050"/>
-        <text x="516" y="81" fill="#556688" font-size="8" font-family="sans-serif">Hasta Adı: mustafa*</text>
+        <text x="516" y="81" fill="#556688" font-size="8" font-family="sans-serif">Hasta Adı: ornek*</text>
         <rect x="510" y="92" width="140" height="28" rx="6" fill="#1a0a2a" stroke="#401e60"/>
         <text x="580" y="110" fill="#c090ff" font-size="10" font-weight="bold" text-anchor="middle" font-family="sans-serif">🔍 SORGULA</text>
         <rect x="510" y="128" width="140" height="16" rx="3" fill="#0a1a2e" stroke="#1e3050"/>
-        <text x="516" y="139" fill="#00e5c8" font-size="8" font-family="sans-serif">👤 MUSTAFA UYGUR</text>
+        <text x="516" y="139" fill="#00e5c8" font-size="8" font-family="sans-serif">👤 ÖRNEK HASTA</text>
         <text x="580" y="155" fill="#334455" font-size="8" text-anchor="middle" font-family="sans-serif">▶ Görüntüle butonuna basın</text>
         <text x="580" y="185" fill="#553355" font-size="8" text-anchor="middle" font-family="sans-serif">Proxy modu gerektirir</text>
       </svg>
@@ -579,10 +586,10 @@
 
         <!-- Server list -->
         <rect x="120" y="65" width="180" height="100" rx="6" fill="#07101a" stroke="#1e3050"/>
-        <text x="130" y="82" fill="#00e5c8" font-size="9" font-family="sans-serif">● ARTVIN PACS</text>
+        <text x="130" y="82" fill="#00e5c8" font-size="9" font-family="sans-serif">● DEMO PACS</text>
         <text x="136" y="94" fill="#445566" font-size="8" font-family="monospace">127.0.0.1:5656</text>
         <rect x="122" y="98" width="176" height="1" fill="#1e2d45"/>
-        <text x="130" y="112" fill="#556688" font-size="9" font-family="sans-serif">○ RIZE PACS</text>
+        <text x="130" y="112" fill="#556688" font-size="9" font-family="sans-serif">○ TEST PACS</text>
         <text x="130" y="125" fill="#556688" font-size="9" font-family="sans-serif">○ TEST SERVER</text>
 
         <!-- Buttons -->
@@ -596,7 +603,7 @@
         <!-- Form -->
         <text x="330" y="78" fill="#445566" font-size="8" font-family="sans-serif">Sunucu Açıklaması</text>
         <rect x="328" y="82" width="250" height="18" rx="3" fill="#060e18" stroke="#1e3050"/>
-        <text x="334" y="94" fill="#8899aa" font-size="9" font-family="monospace">ARTVIN PACS</text>
+        <text x="334" y="94" fill="#8899aa" font-size="9" font-family="monospace">DEMO PACS</text>
 
         <text x="330" y="110" fill="#445566" font-size="8" font-family="sans-serif">IP Adresi</text>
         <rect x="328" y="114" width="250" height="18" rx="3" fill="#060e18" stroke="#1e3050"/>
@@ -619,7 +626,7 @@
 
         <!-- Status -->
         <circle cx="340" cy="256" r="5" fill="#00c890"/>
-        <text x="352" y="260" fill="#00c890" font-size="9" font-family="sans-serif">C-ECHO başarılı — ARTVIN PACS bağlı</text>
+        <text x="352" y="260" fill="#00c890" font-size="9" font-family="sans-serif">TCP portu açık — DICOM C-ECHO doğrulanmadı</text>
       </svg>
       <div class="diagram-caption">Şekil 3 — PACS Sunucu Ayarları ekranı. PACS menüsü → PACS Sunucu Ayarları veya Sol panel → Ayarlar butonu</div>
     </div>
@@ -641,7 +648,7 @@
         <rect x="20" y="30" width="110" height="60" rx="6" fill="#0a1520" stroke="#1e3050"/>
         <text x="75" y="52" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">1. Hasta adı</text>
         <text x="75" y="64" fill="#00e5c8" font-size="9" text-anchor="middle" font-family="sans-serif">girin</text>
-        <text x="75" y="78" fill="#445566" font-size="8" text-anchor="middle" font-family="monospace">mustafa*</text>
+        <text x="75" y="78" fill="#445566" font-size="8" text-anchor="middle" font-family="monospace">ornek*</text>
 
         <line x1="130" y1="60" x2="155" y2="60" stroke="#00e5c8" stroke-width="1.5" marker-end="url(#arr2)"/>
 
@@ -671,17 +678,17 @@
 
         <!-- Step 5 -->
         <rect x="560" y="30" width="120" height="60" rx="6" fill="#0a2218" stroke="#1e5030"/>
-        <text x="620" y="52" fill="#00c890" font-size="9" text-anchor="middle" font-family="sans-serif">5. ▶ Görüntüle</text>
+        <text x="620" y="52" fill="#00c890" font-size="9" text-anchor="middle" font-family="sans-serif">5. WADO-RS test</text>
         <text x="620" y="64" fill="#00c890" font-size="9" text-anchor="middle" font-family="sans-serif">butonuna bas</text>
-        <text x="620" y="78" fill="#336644" font-size="7" text-anchor="middle" font-family="sans-serif">WADO-RS / C-MOVE</text>
+        <text x="620" y="78" fill="#336644" font-size="7" text-anchor="middle" font-family="sans-serif">WADO-RS test · indirme yok</text>
       </svg>
-      <div class="diagram-caption">Şekil 4 — PACS'tan görüntü sorgulama ve açma akışı</div>
+      <div class="diagram-caption">Şekil 4 — PACS sorgu akışı · bu sürüm WADO-RS uç noktasını test eder, çalışma görüntülerini indirmez</div>
     </div>
 
     <div class="alert alert-yellow">
       <span class="alert-icon">⚠️</span>
       <div class="alert-body">
-        <strong>CORS Uyarısı:</strong> Tarayıcı güvenlik politikası nedeniyle <code>file://</code> protokolüyle açılan HTML'den PACS'a direkt TCP bağlantısı yapılamaz. PACS sorgulama için <strong>BASLAT.bat → localhost:3000</strong> üzerinden çalıştırın veya PACS'ın DICOMweb/WADO-RS özelliğini etkinleştirin.
+        <strong>PACS uyarısı:</strong> Tarayıcıdan doğrudan DICOM TCP bağlantısı yapılamaz. Bu sürümün PACS API'si için <strong>BASLAT.bat → http://127.0.0.1:3000</strong> üzerinden açın. GitHub Pages veya <code>file://</code> sayfası PACS proxy/API'sini sağlamaz.
       </div>
     </div>
   </div>
@@ -734,6 +741,11 @@
         <div class="feat-title">Elips ROI</div>
         <div class="feat-desc">Oval seçim alanı ile doku analizi. Yuvarlak yapılar için dikdörtgene göre daha hassas.</div>
       </div>
+    </div>
+
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body"><strong>MPR/3D güvenlik notu:</strong> Bu özellikler prototip düzeyindedir. MPR, DICOM voxel spacing/orientation bilgileriyle klinik olarak doğrulanmış değildir; 3D görünüm yalnızca orta kesiti bir küp üzerine doku olarak yerleştirir, gerçek hacim renderı/MIP/yüzey çıkarımı yapmaz. Tanısal değerlendirmede kullanmayın.</div>
     </div>
 
     <h3>Pencere/Seviye Önayarları (Presets)</h3>
@@ -812,7 +824,7 @@
       <span class="alert-icon">❌</span>
       <div class="alert-body">
         <strong>PACS'a ulaşılamıyor / "Sonuç bulunamadı"</strong><br>
-        Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çözüm: <code>BASLAT.bat</code> ile proxy sunucusunu başlatın ve <code>http://localhost:3000</code> adresinden açın.
+        Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çözüm: <code>BASLAT.bat</code> ile proxy sunucusunu başlatın ve <code>http://127.0.0.1:3000</code> adresinden açın.
       </div>
     </div>
 
@@ -845,10 +857,37 @@
       <tr><th>Bileşen</th><th>Minimum</th><th>Önerilen</th></tr>
       <tr><td>Tarayıcı</td><td>Chrome 90+, Firefox 88+, Edge 90+</td><td>Chrome / Edge güncel</td></tr>
       <tr><td>RAM</td><td>4 GB</td><td>8 GB (büyük CT serileri için)</td></tr>
-      <tr><td>Node.js (Proxy modu)</td><td>v16+</td><td>v20 LTS</td></tr>
+      <tr><td>Node.js (Proxy modu)</td><td>v18+</td><td>v20 LTS veya üzeri</td></tr>
       <tr><td>Ekran çözünürlüğü</td><td>1280×720</td><td>1920×1080</td></tr>
       <tr><td>İşletim Sistemi</td><td>Windows 10</td><td>Windows 10/11</td></tr>
     </table>
+  </div>
+
+  <!-- ══ 8. YEREL AI VE GİZLİLİK ══ -->
+  <div class="section" id="ai-gizlilik">
+    <div class="section-hdr">
+      <div class="section-num yellow">8</div>
+      <h2>Yerel AI, gizlilik ve insan denetimi</h2>
+    </div>
+
+    <p>Önerilen mimaride GitHub Pages yalnızca kılavuz ve sentetik örnekler sunar. Gerçek DICOM görüntüsü, PACS erişimi ve ileride eklenecek model çalıştırıcısı yerel bilgisayarda/kurum içinde kalır.</p>
+
+    <div class="diagram-wrap">
+      <img src="docs/visuals/local-ai-safety-architecture.svg" alt="GitHub Pages dokümantasyonu ile yerel AtikViewer, AI modeli ve radyolog incelemesi arasındaki güvenli veri akışı" style="width:100%;display:block;">
+      <div class="diagram-caption">Şekil 5 — Önerilen yerel/on-premise akış · gerçek hasta verisi GitHub Pages'e gönderilmez</div>
+    </div>
+
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body"><strong>“Sıfır hata” mutlak olarak garanti edilemez.</strong> Güvenli hedef; sessiz hataları önlemek, belirsizlikte analizi durdurmak, her AI önerisini taslak olarak işaretlemek ve son kararı radyoloğa bırakmaktır. Bu prototip klinik tanı için doğrulanmış değildir.</div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-body"><div class="step-title">GitHub Pages</div><div class="step-desc">Kılavuz, mimari diyagramı ve yalnızca sentetik/kimliksiz demo içeriği.</div></div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-body"><div class="step-title">Yerel çalışma</div><div class="step-desc"><code>npm ci</code> → <code>npm run check</code> → <code>npm start</code>. Sunucu varsayılan olarak <code>127.0.0.1</code> üzerinde açılır.</div></div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-body"><div class="step-title">Önce veri kontrolü, sonra analiz</div><div class="step-desc">İleride eklenecek AI, yalnızca seçilen ve desteklenen görev için yerel çalışır. Desteklenmeyen/şüpheli girdi analizden güvenli biçimde çıkarılır.</div></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-body"><div class="step-title">Radyolog incelemesi</div><div class="step-desc">Öneri kabul, düzenleme, ret veya erteleme seçenekleriyle incelenir; AI raporu otomatik imzalamaz.</div></div></div>
+    </div>
   </div>
 
 </div><!-- /container -->
@@ -856,7 +895,7 @@
 <footer>
   <div>ATİK VİEWER v1.1.0 — Mustafa UYGUR</div>
   <div style="margin-top:6px;">
-    <a href="https://github.com/CehennemGibiyim/AtikAnaliz">GitHub: CehennemGibiyim/AtikAnaliz</a>
+    <a href="https://github.com/CehennemGibiyim/AtikViewer">GitHub: CehennemGibiyim/AtikViewer</a>
   </div>
   <div style="margin-top:10px;color:#334455;font-size:11px;">
     Tıbbi karar vermek için değil, görüntüleme ve inceleme amaçlıdır.

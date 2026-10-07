@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atik Viewer — Tıbbi Görüntüleme Sistemi</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="./vendor/three-r128.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════
    ATIK VIEWER — CSS VARIABLES & THEMES
@@ -685,7 +685,7 @@ kbd{
     </svg>
     ATİK VİEWER
   </div>
-  <div class="tb-ver">v1.0.0 BETA</div>
+  <div class="tb-ver">v1.1.0 BETA</div>
   <div style="flex:1"></div>
   <!-- Theme switcher -->
   <div style="display:flex;gap:5px;align-items:center;">
@@ -723,7 +723,7 @@ kbd{
       <div class="mni" onclick="setGrid('2x3')">⊞⊞ 2×3</div>
       <div class="mni-sep"></div>
       <div class="mni" onclick="showMPR()">⊕ MPR - Çok Düzlemli</div>
-      <div class="mni" onclick="show3D()">🧊 3D Rendering</div>
+      <div class="mni" onclick="show3D()">🧊 3D Prototip (tanısal değil)</div>
       <div class="mni-sep"></div>
       <div class="mni" onclick="toggleFullscreen()">⛶ Tam Ekran<span class="mni-sc">F11</span></div>
       <div class="mni" onclick="togglePanel('lpanel')">◧ Sol Panel</div>
@@ -779,7 +779,7 @@ kbd{
       <div class="mni" onclick="testPACSConnection()">🔌 Bağlantı Test Et</div>
       <div class="mni-sep"></div>
       <div class="mni" onclick="switchTab('pacs')">🔍 Hasta/Çalışma Sorgula</div>
-      <div class="mni" onclick="doRetrieve()">⬇ Seçili Çalışmayı İndir</div>
+      <div class="mni" onclick="testWadoEndpoint()">🔍 WADO-RS Uç Noktasını Test Et</div>
       <div class="mni-sep"></div>
       <div class="mni" onclick="showSend()">⬆ Görüntü Gönder (C-STORE)</div>
     </div>
@@ -817,8 +817,8 @@ kbd{
   <!-- View Mode -->
   <div class="tb-grp">
     <div class="tb-grp-label">MOD</div>
-    <div class="tbtn" id="gbtn-mpr" data-tip="MPR Çok Düzlemli" onclick="showMPR()" style="font-size:10px;font-weight:700">MPR</div>
-    <div class="tbtn" id="gbtn-3d"  data-tip="3D Rendering"     onclick="show3D()"  style="font-size:10px;font-weight:700">3D</div>
+    <div class="tbtn" id="gbtn-mpr" data-tip="MPR prototip; voxel geometri doğrulanmadı" onclick="showMPR()" style="font-size:10px;font-weight:700">MPR</div>
+    <div class="tbtn" id="gbtn-3d"  data-tip="3D prototip; volumetrik tanı için uygun değil" onclick="show3D()"  style="font-size:10px;font-weight:700">3D</div>
   </div>
   <div class="tb-sep"></div>
 
@@ -960,7 +960,7 @@ kbd{
             </div>
           </div>
           <button class="pq-btn" onclick="doPACSQuery()">🔍 SORGULA (C-FIND)</button>
-          <button class="pq-btn red" onclick="doRetrieve()" style="margin-top:4px;">⬇ SEÇİLİ ÇALIŞMAYI İNDİR (C-MOVE)</button>
+          <button class="pq-btn red" onclick="testWadoEndpoint()" style="margin-top:4px;">🔍 WADO-RS UÇ NOKTASINI TEST ET</button>
         </div>
       </div>
 
@@ -1011,7 +1011,7 @@ kbd{
           <circle cx="34" cy="22" r="2" fill="currentColor" opacity=".7"/>
         </svg>
         <div class="dz-title">ATİK VİEWER</div>
-        <div class="dz-sub">Tıbbi Görüntüleme Sistemi · v1.0.0</div>
+        <div class="dz-sub">Tıbbi Görüntüleme Sistemi · v1.1.0</div>
       </div>
       <div class="dz-btn-row">
         <button class="dz-btn" onclick="openFiles()">📂 Dosya Aç</button>
@@ -1020,7 +1020,7 @@ kbd{
       </div>
       <div class="dz-formats">
         DICOM (.dcm, .dicom) · JPEG · PNG · BMP · TIFF · NIfTI (.nii, .nii.gz)<br>
-        Dosyaları sürükleyip bırakabilirsiniz · Tüm standart DICOM transferleri desteklenir
+        Dosyaları sürükleyip bırakabilirsiniz · DICOM transfer syntax/codec desteği sınırlı olabilir
       </div>
     </div>
 
@@ -1031,9 +1031,9 @@ kbd{
     <div id="threed-container">
       <canvas id="threed-canvas"></canvas>
       <div id="threed-toolbar">
-        <div class="tbtn on" onclick="set3DMode('volume')" data-tip="Volume Rendering">VR</div>
-        <div class="tbtn"    onclick="set3DMode('mip')"    data-tip="Maximum Intensity">MIP</div>
-        <div class="tbtn"    onclick="set3DMode('surface')" data-tip="Surface Rendering">SR</div>
+        <div class="tbtn on" onclick="set3DMode('volume')" data-tip="Demo görünüm; gerçek hacim renderı değildir">VR</div>
+        <div class="tbtn"    onclick="set3DMode('mip')"    data-tip="MIP algoritması uygulanmamıştır">MIP</div>
+        <div class="tbtn"    onclick="set3DMode('surface')" data-tip="Yüzey çıkarımı uygulanmamıştır">SR</div>
         <div class="tbtn"    onclick="reset3D()"            data-tip="Görünümü Sıfırla">↺</div>
         <div class="tbtn"    onclick="close3D()"            data-tip="Kapat" style="color:var(--red)">✕</div>
       </div>
@@ -1201,7 +1201,7 @@ kbd{
   <div class="modal narrow">
     <div class="modal-hdr">PACS Sunucusu <span id="server-edit-mode">Ekle</span> <span class="modal-close" onclick="closeModal('modal-server-edit')">✕</span></div>
     <div class="modal-body">
-      <div class="form-row"><div class="form-label">Açıklama</div><input class="form-input" id="se-desc" placeholder="Örn: ARTVIN PACS"></div>
+      <div class="form-row"><div class="form-label">Açıklama</div><input class="form-input" id="se-desc" placeholder="Örn: DEMO PACS"></div>
       <div class="form-row"><div class="form-label">IP / Hostname</div><input class="form-input" id="se-ip" placeholder="127.0.0.1"></div>
       <div class="form-row"><div class="form-label">AE Title</div><input class="form-input" id="se-ae" placeholder="DCM_SERVER"></div>
       <div class="form-row"><div class="form-label">Port</div><input class="form-input" id="se-port" type="number" value="5656"></div>
@@ -1354,11 +1354,12 @@ kbd{
       </svg>
       <div style="font-size:20px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">ATİK VİEWER</div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Tıbbi DICOM Görüntüleme Sistemi</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Versiyon 1.0.0 BETA</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Versiyon 1.1.0 BETA</div>
       <div style="font-size:11px;color:var(--text3);line-height:1.7;">
-        DICOM · PACS · MPR · 3D Rendering<br>
-        Kamu Kullanımına Açık Tıbbi Yazılım<br><br>
-        <span style="color:var(--accent)">© 2025 Atik Viewer</span>
+        DICOM · PACS sorgu · MPR/3D prototip araçları<br>
+        <strong style="color:var(--orange)">Geliştirme prototipi · klinik olarak doğrulanmamıştır</strong><br>
+        Tek başına tanı/tedavi kararı için kullanılmamalıdır.<br><br>
+        <span style="color:var(--accent)">© 2026 Atik Viewer</span>
       </div>
     </div>
     <div class="modal-footer">
@@ -1370,7 +1371,7 @@ kbd{
 <!-- MPR MODAL (3 panel) -->
 <div class="modal-bg" id="modal-mpr">
   <div class="modal" style="width:92vw;max-width:1100px;height:85vh;max-height:85vh;">
-    <div class="modal-hdr">⊕ MPR — Çok Düzlemli Yeniden Oluşturma <span class="modal-close" onclick="closeModal('modal-mpr')">✕</span></div>
+    <div class="modal-hdr">⊕ MPR — Prototip Kesit Görünümü <span class="modal-close" onclick="closeModal('modal-mpr')">✕</span></div>
     <div class="modal-body" style="padding:0;flex:1;display:flex;gap:2px;background:var(--bg0);overflow:hidden;">
       <div style="flex:1;position:relative;background:#000;display:flex;flex-direction:column;">
         <div class="vp-mode-label">AKSİYEL</div>
@@ -1386,7 +1387,7 @@ kbd{
       </div>
     </div>
     <div class="modal-footer" style="padding:6px 12px;">
-      <span style="font-size:10px;color:var(--text3);">Not: MPR için CT/MR serileri gereklidir (çok kesitli)</span>
+      <span style="font-size:10px;color:var(--orange);">Uyarı: Prototip kesitleri voxel spacing/orientation ile düzeltilmiş klinik MPR değildir; tanısal kullanım için uygun değildir.</span>
       <button class="mbtn secondary" style="margin-left:auto" onclick="closeModal('modal-mpr')">Kapat</button>
     </div>
   </div>
@@ -1418,7 +1419,7 @@ kbd{
 
 // ── CONFIG & STATE ──────────────────────────────────────────
 const APP = {
-  version: '1.0.0',
+  version: '1.1.0',
   tool: 'wl',
   grid: '1x1',
   activeVP: 0,
@@ -2535,6 +2536,7 @@ function showMPR() {
   }
   document.getElementById('modal-mpr').classList.add('show');
   setTimeout(() => renderMPR(), 100);
+  showNotif('MPR prototip görünümüdür; voxel geometrisi/spacing doğrulanmadı.', 'warn', 7000);
 }
 
 function renderMPR() {
@@ -2641,7 +2643,7 @@ function show3D() {
   document.getElementById('threed-container').style.display = 'block';
   document.getElementById('gbtn-3d').classList.add('on');
   init3D();
-  showNotif('3D görüntü oluşturuluyor...', 'info');
+  showNotif('3D prototip: yalnızca orta kesit texture edilir; hacim rendering/MIP/SR değildir.', 'warn', 8000);
 }
 
 function init3D() {
@@ -2747,7 +2749,7 @@ function loadPACSServers() {
   // Add demo server if empty
   if (!APP.pacsServers.length) {
     APP.pacsServers = [{
-      id: 1, desc: 'ARTVIN PACS', ip: '127.0.01',
+      id: 1, desc: 'DEMO PACS', ip: '127.0.0.1',
       ae: 'DCM_SERVER', port: 5656, cmovePort: 5656,
       cmoveEnabled: true, isDefault: true, status: 'unknown',
     }];
@@ -2875,8 +2877,8 @@ async function testPACSConnection() {
     APP.pacsConnected = data.ok;
     refreshPACSServerList();
     document.getElementById('pacs-conn-dot').className = 'sb-conn-dot ' + (data.ok?'ok':'err');
-    document.getElementById('pacs-conn-label').textContent = data.ok ? `${server.desc} (Baglanti OK)` : 'Baglanti Hatasi';
-    showNotif(data.ok ? `✔ ${server.desc} baglanti OK` : `✗ ${data.msg}`, data.ok?'ok':'err');
+    document.getElementById('pacs-conn-label').textContent = data.ok ? `${server.desc} (TCP açık · DICOM doğrulanmadı)` : 'Bağlantı Hatası';
+    showNotif(data.ok ? `✔ ${server.desc}: TCP portu açık; DICOM C-ECHO yapılmadı` : `✗ ${data.msg}`, data.ok?'ok':'err');
   } catch(e) {
     server.status = 'err';
     refreshPACSServerList();
@@ -2895,7 +2897,7 @@ async function testSelectedPACS() {
     const data = await r.json();
     s.status = data.ok ? 'ok' : 'err';
     refreshPACSServerList();
-    showNotif(data.ok ? `✔ ${s.desc} baglanti OK` : `✗ ${data.msg}`, data.ok?'ok':'err');
+    showNotif(data.ok ? `✔ ${s.desc}: TCP portu açık; DICOM C-ECHO yapılmadı` : `✗ ${data.msg}`, data.ok?'ok':'err');
   } catch(e) {
     s.status = 'err'; refreshPACSServerList();
     showNotif('✗ Proxy sunucusuna ulasilamiyor', 'err');
@@ -2909,8 +2911,8 @@ async function doPACSQuery() {
   const name = document.getElementById('pq-name').value.trim();
   const id   = document.getElementById('pq-id').value.trim();
   const acc  = document.getElementById('pq-accession').value.trim();
-  const from = document.getElementById('pq-date-from').value.replace(/-/g,'');
-  const to   = document.getElementById('pq-date-to').value.replace(/-/g,'');
+  const from = document.getElementById('pq-date-from').value;
+  const to   = document.getElementById('pq-date-to').value;
   const mods = [...document.querySelectorAll('.mod-cb-item:checked')].map(e=>e.value);
 
   document.getElementById('pacs-spinner').style.display = 'flex';
@@ -2952,8 +2954,8 @@ async function doPACSQuery() {
 }
 
 function generateDemoPatients(nameFilter, idFilter, mods, count) {
-  const names = ['YILMAZ^AHMET','ÇELİK^FATMA','KAYA^MEHMET','DEMİR^AYŞE','ŞAHİN^HÜSEYİN',
-                 'ARSLAN^ZEYNİP','DOĞAN^MUSTAFA','KOÇ^HALİME','KURT^İBRAHİM','ÖZDEMİR^SULTAN'];
+  const names = ['DEMO^HASTA001','DEMO^HASTA002','DEMO^HASTA003','DEMO^HASTA004','DEMO^HASTA005',
+                 'DEMO^HASTA006','DEMO^HASTA007','DEMO^HASTA008','DEMO^HASTA009','DEMO^HASTA010'];
   const modList = mods.length ? mods : ['CT','MR','XR','US'];
   const results = [];
   for (let i = 0; i < count; i++) {
@@ -2985,7 +2987,7 @@ function renderPACSResults(results) {
     return;
   }
   container.innerHTML = results.map((r, i) => `
-    <div class="result-item" onclick="selectPACSResult(${i})" ondblclick="doRetrieve()">
+    <div class="result-item" onclick="selectPACSResult(${i})" ondblclick="testWadoEndpoint()">
       <div class="ri-name">👤 ${r.patientName.replace(/\^/g,' ')}</div>
       <div class="ri-meta">ID: ${r.patientId} · 📅 ${r.studyDate} · ${r.numImages} görüntü</div>
       <div class="ri-meta" style="color:var(--text1)">${r.description}</div>
@@ -3001,32 +3003,27 @@ function selectPACSResult(i) {
   });
 }
 
-async function doRetrieve() {
-  if (APP.selectedPACSResult === null) { showNotif('Bir çalışma seçin', 'warn'); return; }
+async function testWadoEndpoint() {
+  if (APP.selectedPACSResult === null) { showNotif('Önce bir çalışma seçin', 'warn'); return; }
   const result = APP.pacsQueryResults[APP.selectedPACSResult];
   const server = getActiveServer();
   if (!server) { showNotif('PACS sunucusu seçin', 'warn'); return; }
 
-  showNotif(`WADO-RS sorgulanıyor: ${result.description}`, 'info');
-  setStatus('WADO-RS sorgulanıyor...');
-  setProgress(20);
+  showNotif(`WADO-RS uç noktası kontrol ediliyor: ${result.description}`, 'info');
+  setStatus('WADO-RS uç noktası kontrol ediliyor...');
   try {
     const params = new URLSearchParams({ serverIp: server.ip, serverPort: server.port, studyUID: result.studyUID });
     const r = await fetch(`/api/pacs/wado?${params}`);
     const data = await r.json();
-    setProgress(80);
     if (data.ok) {
-      setProgress(100);
-      setTimeout(() => setProgress(0), 1000);
-      setStatus(`Hazır: ${result.description}`);
-      showNotif(`✔ ${result.description} WADO-RS ile alındı`, 'ok');
+      setStatus(`WADO-RS yanıt verdi: ${result.description} · görüntüler indirilmedi`);
+      showNotif(`✔ WADO-RS uç noktası yanıt verdi. Bu sürümde çalışma görüntüleri indirilmez.`, 'ok');
     } else {
-      setProgress(0);
-      setStatus('WADO-RS desteklenmiyor');
+      setStatus('WADO-RS uç noktası bulunamadı');
       showNotif(`WADO-RS desteklenmiyor: ${data.msg}`, 'warn');
     }
   } catch(e) {
-    setProgress(0);
+    setStatus('WADO-RS kontrol hatası');
     showNotif('✗ Proxy hatası: ' + e.message, 'err');
   }
 }

@@ -1,0 +1,26 @@
+# JavaScript/TypeScript build and dependency output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local secrets and PACS configuration
+.env
+.env.*
+!.env.example
+
+# Local AI weights and private datasets (never commit patient data)
+models/
+local-data/
+datasets-private/
+*.dcm
+*.dicom
+*.nii
+*.nii.gz
+*.pacs.json
+
+# Local logs and OS/editor files
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
