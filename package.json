@@ -1,16 +1,23 @@
 {
   "name": "atik-viewer",
   "version": "1.1.0",
-  "description": "ATİK VİEWER — Tibbi Goruntuleme Sistemi + PACS Proxy",
+  "description": "ATİK VİEWER — Tıbbi Görüntüleme Sistemi ve yerel PACS proxy",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "4.22.3",
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "author": "Mustafa UYGUR",
   "license": "MIT"

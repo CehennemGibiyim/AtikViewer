@@ -6,7 +6,23 @@ Resimli anlatım için bulunan adrese giriniz.>>> https://cehennemgibiyim.github
 
 Tıbbi Görüntüleme Sistemi — Kurulum ve Kullanım Kılavuzu
 
-v1.1.0 BETA Sıfır Bağımlılık (HTML Modu) Node.js Proxy Modu DICOM · JPEG · PNG · NIfTI
+v1.1.0 BETA · HTML Görüntüleyici · Yerel Node.js Proxy · DICOM · JPEG · PNG · NIfTI
+
+> ⚠️ **Güvenlik ve tıbbi kullanım notu:** AtikViewer şu anda geliştirme/prototip aşamasındadır; klinik olarak doğrulanmış bir tanı sistemi değildir ve tek başına tanı/tedavi kararı için kullanılmamalıdır. Bu aşamada çalışan bir AI modeli/AI tanı entegrasyonu yoktur. Mutlak “sıfır hata” garantisi verilemez. GitHub Pages statik görüntüleyici ve kılavuz dosyalarını sunar; burada sunucu tarafında PACS proxy'si veya çalışan AI modeli yoktur. Görüntüleyicide yerel seçilen dosyalar bu sayfaya yüklenmez. Gerçek hasta verisini, PACS bilgilerini veya model ağırlıklarını herkese açık GitHub deposuna/Issues'a yüklemeyin. `/api/pacs/echo` şu an yalnızca TCP port erişimini kontrol eder; DICOM C-ECHO gerçekleştirmez.
+
+### Geliştirici kurulumu ve kontroller
+
+Node.js 18 veya üzeri gerekir. Depo klasöründe:
+
+```bash
+npm ci
+npm run check
+npm start
+```
+
+Ardından `http://127.0.0.1:3000` adresini açın. Sunucu varsayılan olarak yalnızca bu bilgisayarda dinler. Gerçek PACS/AI uç noktalarını kurum ağına açmak için bu prototip henüz hazır değildir; kimlik doğrulama ve dağıtım güvenliği ayrıca ele alınmalıdır.
+
+Görüntüleyici Three.js dosyasını artık CDN yerine `vendor/` klasöründen yükler. Tek HTML dosyasını değil, bu klasörü de içeren depo/ZIP paketini kullanın.
 
 ### 📋 İçindekiler
 
@@ -31,9 +47,9 @@ Node.js gerektirmez. Yerel DICOM dosyaları açmak için idealdir. PACS'tan gör
 
 1
 
-atik-viewer.html dosyasını indirin
+Depo ZIP dosyasını indirin
 
-Releases sayfasından veya doğrudan GitHub'dan indirin.
+`atik-viewer.html` ile birlikte `vendor/` klasörünü de indirin; yerel Three.js dosyası bu klasördedir.
 
 https://github.com/CehennemGibiyim/AtikViewer
 
@@ -55,39 +71,41 @@ Gerçek PACS sorgusu (C-FIND / WADO-RS) için Node.js proxy gereklidir. CORS eng
 
 1
 
-4 dosyayı aynı klasöre koyun
+Depo dosyalarını birlikte tutun
 
-Tüm dosyalar aynı dizinde olmalıdır:
+Tüm uygulama dosyalarını, özellikle Three.js için `vendor/` klasörünü aynı proje klasöründe bırakın:
 
 📁 AtikViewer/
 
   ├── atik-viewer.html ← Ana uygulama
 
-  ├── server.js ← Proxy sunucusu
+  ├── vendor/ ← Yerel Three.js ve lisansı
 
-  ├── package.json ← Bağımlılık tanımı
+  ├── server.js ← Yerel proxy sunucusu
+
+  ├── package.json / package-lock.json
 
   └── BASLAT.bat ← Windows başlatıcı
 
 2
 
-Node.js yükleyin (bir kez)
+Node.js 18 veya üzeri LTS sürümünü yükleyin
 
-Node.js kurulu değilse BASLAT.bat otomatik yönlendirme yapar.
+Node.js kurulu değilse BASLAT.bat indirme sayfasını açar.
 
-https://nodejs.org → LTS sürümünü indirin
+https://nodejs.org
 
 3
 
 BASLAT.bat dosyasına çift tıklayın
 
-İlk çalıştırmada npm install otomatik yapılır. Tarayıcı localhost:3000 adresinde açılır.
+İlk çalıştırmada kilit dosyasındaki sürümlerle `npm ci` çalışır. Tarayıcı `http://127.0.0.1:3000` adresinde açılır.
 
 4
 
 Tarayıcıda açın
 
-http://localhost:3000
+http://127.0.0.1:3000
 
 BASLAT.bat bunu otomatik yapar. Siyah bir komut penceresi açık kaldığı sürece sunucu çalışır.
 
@@ -100,7 +118,7 @@ Proxy sunucusunu kapatmak için komut penceresini kapatmanız yeterlidir. Bilgis
 Arayüz Tanıtımı
 ---------------
 
-⊕ ATİK VİEWER v1.0.0 TEMA:
+⊕ ATİK VİEWER v1.1.0 TEMA:
 
 ● ○ ◑ ◐ Dosya Görünüm Araçlar Filtreler Pencere PACS Yardım PACS DÜZEN 1x1 2x1 2x2 1x3 2x3 MOD MPR 3D | 
 
@@ -116,17 +134,17 @@ PRESET ABD AKC KEM BEY | FİLTRE | ORJ PACS LOKAL BİLGİ
 
 🔍 SORGULA (C-FIND) ⬇ SEÇİLİ ÇALIŞMAYI İNDİR SONUÇLAR 
 
-👤 UYGUR MUSTAFA ID: 43621 · 2024-05-08 · 
+👤 ÖRNEK HASTA ID: DEMO-0001 · 2000-01-01 ·
 
 🖼 274 görüntü BT Servikal Vertebra CT ▶ Görüntüle 
 
-👤 ÇELİK FATİH ID: 51203 · 2024-03-15 · 
+👤 SENTETİK HASTA ID: DEMO-0002 · 2000-01-02 ·
 
-🖼 45 görüntü Akciğer PA MUSTAFA UYGUR 43621 17.09.1982 · 
+🖼 45 görüntü Akciğer PA ÖRNEK HASTA DEMO-0001 01.01.1970 ·
 
-41Y M 08.05.2024 W: 400 L: 40 Zoom: 1.00× IMA: 47/274 Artvin Devlet Hast. BT Servikal Vertebra CT 
+56Y M 01.01.2000 W: 400 L: 40 Zoom: 1.00× IMA: 47/274 DEMO HASTANESİ BT Servikal Vertebra CT
 
-🖼 SERİ 274 görüntü 1/274 2/274 PACS: ARTVIN PACS (C-ECHO OK) Modality: CT W/L: 400/40 Zoom: 1.0× Kare: 47/274
+🖼 SERİ 274 görüntü 1/274 2/274 PACS: DEMO PACS (TCP portu açık; DICOM C-ECHO doğrulanmadı) Modality: CT W/L: 400/40 Zoom: 1.0× Kare: 47/274
 
 Şekil 1 — Atik Viewer Ana Arayüzü · Koyu tema, PACS bağlı, CT görüntü yüklü
 
@@ -171,9 +189,9 @@ Yüklenen serinin thumbnail listesi, kare numarası. Tıklayarak kareye atlanır
 Dosya Açma
 ----------
 
-DICOM, JPEG, PNG, BMP, TIFF, NIfTI formatları desteklenir
+DICOM, JPEG, PNG, BMP, TIFF ve NIfTI denenebilir; DICOM transfer syntax/codec desteği sınırlı olabilir
 
-① Sürükle & Bırak 📂 Dosyaları buraya sürükleyin .dcm · .dicom · klasör ② Buton ile Aç 📂 Dosya Aç 📁 Klasör Aç Ctrl+O · Ctrl+Shift+O ③ PACS'tan Çek Hasta Adı: mustafa\* 🔍 SORGULA 👤 MUSTAFA UYGUR ▶ Görüntüle butonuna basın Proxy modu gerektirir
+① Sürükle & Bırak 📂 Dosyaları buraya sürükleyin .dcm · .dicom · klasör ② Buton ile Aç 📂 Dosya Aç 📁 Klasör Aç Ctrl+O · Ctrl+Shift+O ③ PACS'tan Çek Hasta Adı: ornek\* 🔍 SORGULA 👤 ÖRNEK HASTA ▶ Görüntüle butonuna basın Proxy modu gerektirir
 
 Şekil 2 — Üç farklı görüntü yükleme yöntemi
 
@@ -190,19 +208,19 @@ Akgun, DCM4CHEE, Orthanc ve DICOMweb destekli PACS sistemleri
 
 ### PACS Sunucu Ayarları
 
-⚙ PACS Bağlantı Ayarları ● ARTVIN PACS 127.0.0.1:5656 ○ RIZE PACS ○ TEST SERVER \+ Ekle ✏ Düzenle ✕ Sil Sunucu Açıklaması ARTVIN PACS IP Adresi 127.0.0.1 AE Title DCM_SERVERismi Port 5656 🔌 Test Et ✔ Kaydet C-ECHO başarılı — ARTVIN PACS bağlı
+⚙ PACS Bağlantı Ayarları ● DEMO PACS 127.0.0.1:5656 ○ TEST PACS ○ TEST SERVER \+ Ekle ✏ Düzenle ✕ Sil Sunucu Açıklaması DEMO PACS IP Adresi 127.0.0.1 AE Title DCM_SERVERismi Port 5656 🔌 Test Et ✔ Kaydet TCP portu açık — DICOM C-ECHO doğrulanmadı
 
 Şekil 3 — PACS Sunucu Ayarları ekranı. PACS menüsü → PACS Sunucu Ayarları veya Sol panel → Ayarlar butonu
 
 ### Hasta Sorgulama Akışı
 
-1\. Hasta adı girin mustafa\* 2\. Tarih aralığı ve modalite CT · MR · CR … 3\. SORGULA butonuna bas C-FIND / QIDO-RS 4\. Sonuçtan hasta seç tıkla 5\. ▶ Görüntüle butonuna bas WADO-RS / C-MOVE
+1\. Hasta adı girin ornek\* 2\. Tarih aralığı ve modalite CT · MR · CR … 3\. SORGULA butonuna bas C-FIND / QIDO-RS 4\. Sonuçtan hasta seç tıkla 5\. WADO-RS uç noktasını test et — mevcut prototip çalışma görüntülerini indirmez.
 
 Şekil 4 — PACS'tan görüntü sorgulama ve açma akışı
 
 ⚠️
 
-**CORS Uyarısı:** Tarayıcı güvenlik politikası nedeniyle `file://` protokolüyle açılan HTML'den PACS'a direkt TCP bağlantısı yapılamaz. PACS sorgulama için **BASLAT.bat → localhost:3000** üzerinden çalıştırın veya PACS'ın DICOMweb/WADO-RS özelliğini etkinleştirin.
+**PACS uyarısı:** Tarayıcıdan doğrudan DICOM TCP bağlantısı yapılamaz. Bu sürümün PACS API'si için **BASLAT.bat → http://127.0.0.1:3000** üzerinden açın. GitHub Pages veya `file://` sayfası PACS proxy/API'sini sağlamaz.
 
 5
 
@@ -256,6 +274,8 @@ Seçilen alan için HU ortalama, min, max, standart sapma değerleri hesaplanır
 Elips ROI
 
 Oval seçim alanı ile doku analizi. Yuvarlak yapılar için dikdörtgene göre daha hassas.
+
+> ⚠️ **MPR/3D prototip uyarısı:** Bu araçlar klinik olarak doğrulanmamıştır. MPR, voxel spacing/orientation bilgileriyle doğrulanmış değildir; 3D yalnızca orta kesiti bir küp üzerine texture eder, gerçek hacim renderı/MIP/yüzey çıkarımı yapmaz. Tanısal değerlendirmede kullanmayın.
 
 ### Pencere/Seviye Önayarları (Presets)
 
@@ -424,7 +444,7 @@ Sık Karşılaşılan Sorunlar
 ❌
 
 **PACS'a ulaşılamıyor / "Sonuç bulunamadı"**  
-Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çözüm: `BASLAT.bat` ile proxy sunucusunu başlatın ve `http://localhost:3000` adresinden açın.
+Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çözüm: `BASLAT.bat` ile proxy sunucusunu başlatın ve `http://127.0.0.1:3000` adresinden açın.
 
 ⚠️
 
@@ -463,7 +483,7 @@ RAM
 
 Node.js (Proxy modu)
 
-v16+
+v18+
 
 v20 LTS
 
