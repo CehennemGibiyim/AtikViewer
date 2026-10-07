@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const http = require('node:http');
 const { after, before, describe, it } = require('node:test');
 const { app, validateFindRequest } = require('../server.js');
@@ -31,6 +33,9 @@ describe('ATİK VİEWER yerel HTTP sunucusu', () => {
     assert.equal(response.status, 200);
     assert.match(html, /ATİK VİEWER/i);
     assert.match(html, /\.\/vendor\/three-r128\.min\.js/);
+    assert.match(html, /AI: MODEL YOK/);
+    assert.match(html, /Tüm modaliteler \(filtresiz\)/);
+    assert.match(html, /pq-modality-extra/);
     assert.doesNotMatch(html, /cdnjs\.cloudflare\.com\/ajax\/libs\/three\.js/);
   });
 
@@ -40,6 +45,8 @@ describe('ATİK VİEWER yerel HTTP sunucusu', () => {
     assert.equal(response.status, 200);
     assert.match(html, /Kurulum ve Kullanım Kılavuzu/);
     assert.match(html, /DEMO-0001/);
+    assert.match(html, /Çok-modaliteli hedef/);
+    assert.match(html, /STACK-AND-ROADMAP\.md/);
   });
 
   it('resimli mimari kılavuzu yerel sunucudan sunar', async () => {
@@ -60,6 +67,16 @@ describe('ATİK VİEWER yerel HTTP sunucusu', () => {
       const response = await fetch(`${baseUrl}/${file}`);
       assert.equal(response.status, 404, `${file} should not be publicly served`);
     }
+  });
+
+  it('GitHub Pages/uzak arayüzlerden hasta veya PACS sorgusu gönderilmesini engeller', () => {
+    const viewer = fs.readFileSync(path.join(__dirname, '..', 'atik-viewer.html'), 'utf8');
+    assert.match(viewer, /async function requireLocalProxy\(\)[\s\S]*?if \(!isLocalLoopbackHost\(\) \|\| location\.protocol === 'file:'\)[\s\S]*?return false;/);
+    assert.match(viewer, /async function doPACSQuery\(\)[\s\S]*?await requireLocalProxy\(\)[\s\S]*?fetch\(localApiUrl\('api\/pacs\/find'\)/);
+    assert.match(viewer, /async function testPACSConnection\(\)[\s\S]*?await requireLocalProxy\(\)[\s\S]*?fetch\(localApiUrl\(/);
+    assert.match(viewer, /async function testSelectedPACS\(\)[\s\S]*?await requireLocalProxy\(\)[\s\S]*?fetch\(localApiUrl\(/);
+    assert.match(viewer, /async function testWadoEndpoint\(\)[\s\S]*?await requireLocalProxy\(\)[\s\S]*?fetch\(localApiUrl\(/);
+    assert.doesNotMatch(viewer, /fetch\(['"`]\/api\/pacs\//);
   });
 
   it('hasta verisi içermeyen health yanıtı döndürür', async () => {
@@ -108,6 +125,20 @@ describe('ATİK VİEWER yerel HTTP sunucusu', () => {
     });
     assert.equal(result.ok, true);
     assert.equal(result.value.filters.modality, `CT${modalitySeparator}MR`);
+  });
+
+  it('modalite filtresiz tüm çalışmaları ve ek geçerli DICOM kodlarını kabul eder', () => {
+    const base = { serverIp: '127.0.0.1', serverPort: '11112' };
+    const allStudies = validateFindRequest(base);
+    const modalitySeparator = String.fromCharCode(92);
+    const extended = validateFindRequest({
+      ...base,
+      modality: `RTSTRUCT${modalitySeparator}ECG`,
+    });
+    assert.equal(allStudies.ok, true);
+    assert.equal(allStudies.value.filters.modality, '');
+    assert.equal(extended.ok, true);
+    assert.equal(extended.value.filters.modality, `RTSTRUCT${modalitySeparator}ECG`);
   });
 
   it('yerel sentetik QIDO-RS yanıtını doğru eşler ve tarih/modalite filtrelerini yollar', async () => {

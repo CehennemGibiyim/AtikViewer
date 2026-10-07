@@ -20,9 +20,9 @@ npm run check
 npm start
 ```
 
-Ardından `http://127.0.0.1:3000` adresini açın. Sunucu varsayılan olarak yalnızca bu bilgisayarda dinler. Gerçek PACS/AI uç noktalarını kurum ağına açmak için bu prototip henüz hazır değildir; kimlik doğrulama ve dağıtım güvenliği ayrıca ele alınmalıdır.
+Ardından `http://127.0.0.1:3000` adresini açın. Sunucu varsayılan olarak yalnızca bu bilgisayarda dinler. Windows'ta `BASLAT.bat`, Linux/macOS'ta `./BASLAT.sh` kullanılabilir. Gerçek PACS/AI uç noktalarını kurum ağına açmak için bu prototip henüz hazır değildir; kimlik doğrulama ve dağıtım güvenliği ayrıca ele alınmalıdır.
 
-Görüntüleyici Three.js dosyasını artık CDN yerine `vendor/` klasöründen yükler. Tek HTML dosyasını değil, bu klasörü de içeren depo/ZIP paketini kullanın.
+Görüntüleyici Three.js dosyasını CDN yerine `vendor/` klasöründen yükler. Tek HTML dosyasını değil, bu klasörü de içeren depo/ZIP paketini kullanın. Çok-modaliteli mimari, kütüphane araştırması ve kurulum yol haritası: [`docs/STACK-AND-ROADMAP.md`](docs/STACK-AND-ROADMAP.md).
 
 ### 📋 İçindekiler
 
@@ -33,6 +33,7 @@ Görüntüleyici Three.js dosyasını artık CDN yerine `vendor/` klasöründen 
 5.  [Görüntüleme Araçları](#araclar)
 6.  [Klavye Kısayolları](#kisayollar)
 7.  [Sorun Giderme](#sorun)
+8.  [Çok modaliteli AI ve kütüphane yol haritası](docs/STACK-AND-ROADMAP.md)
 
 1
 
@@ -85,7 +86,9 @@ Tüm uygulama dosyalarını, özellikle Three.js için `vendor/` klasörünü ay
 
   ├── package.json / package-lock.json
 
-  └── BASLAT.bat ← Windows başlatıcı
+  ├── BASLAT.bat ← Windows başlatıcı
+
+  └── BASLAT.sh ← Linux/macOS başlatıcı
 
 2
 
@@ -99,7 +102,7 @@ https://nodejs.org
 
 BASLAT.bat dosyasına çift tıklayın
 
-İlk çalıştırmada kilit dosyasındaki sürümlerle `npm ci` çalışır. Tarayıcı `http://127.0.0.1:3000` adresinde açılır.
+İlk çalıştırmada kilit dosyasındaki sürümlerle `npm ci` çalışır. Tarayıcı `http://127.0.0.1:3000` adresinde açılır. Linux/macOS'ta terminalden `./BASLAT.sh` çalıştırın.
 
 4
 
@@ -448,8 +451,9 @@ Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çö
 
 ⚠️
 
-**Node.js bulunamadı**  
-`BASLAT.bat` Node.js'i bulamazsa tarayıcıda `https://nodejs.org` açar. LTS sürümünü indirip kurun, ardından BASLAT.bat'ı tekrar çalıştırın.
+**Node.js bulunamadı**
+
+Windows'ta `BASLAT.bat` Node.js yoksa indirme sayfasını açar. Linux/macOS'ta Node.js 18+ LTS ve npm'i kurup `./BASLAT.sh` komutunu yeniden çalıştırın.
 
 ⚠️
 
@@ -458,8 +462,9 @@ DICOM dosyasının gerçek piksel verisi içerdiğinden emin olun. Bazı PACS si
 
 ✅
 
-**PACS DICOMweb (WADO-RS) Aktifse**  
-CORS izni verilmişse proxy gerekmez. HTML dosyasını direkt açıp PACS ayarlarında WADO-RS URL'sini girin: `http://[PACS-IP]:[PORT]/wado/rs`
+**PACS DICOMweb (WADO-RS) Aktifse**
+
+Bu prototip, yerel proxy üzerinden yalnızca WADO-RS uç noktasını sınar; çalışma görüntülerini indirmez/görüntülemez. PACS sorgusu için Windows'ta `BASLAT.bat`, Linux/macOS'ta `./BASLAT.sh` başlatıcısını kullanın.
 
 ### Sistem Gereksinimleri
 
@@ -495,9 +500,15 @@ Ekran çözünürlüğü
 
 İşletim Sistemi
 
-Windows 10
+Windows 10/11, Linux veya macOS (Node.js kurulumuna göre)
 
-Windows 10/11
+Windows 10/11, Linux/macOS güncel sürüm
+
+### Çok modaliteli AI hedefi ve açık kaynak kütüphaneler
+
+Hedef, görüntüleyici/veri katmanında farklı DICOM modalitelerini kademeli desteklemek ve AI'ı her görev+modalite için ayrı, yerel çalışan modüller halinde tasarlamaktır. **Tek modelin tüm radyolojiyi kapsadığı varsayılmayacaktır.** Bu depoda henüz çalışan AI modeli veya klinik olarak doğrulanmış tanı özelliği yoktur; model ağırlıkları da Git'e eklenmez.
+
+Güncel araştırma ve lisans özeti: [`docs/STACK-AND-ROADMAP.md`](docs/STACK-AND-ROADMAP.md). İlk teknik adaylar Cornerstone3D (DICOM viewport/MPR), dcmjs (DICOM nesne/metadata), MONAI (yerel Python inference), gerektiğinde vtk.js ve ONNX Runtime'dır. Eklenti seçimi mevcut arayüzü bozmayan sentetik veri prototipiyle doğrulanmadan yapılmayacaktır.
 
 ATİK VİEWER v1.1.0 — Mustafa UYGUR
 

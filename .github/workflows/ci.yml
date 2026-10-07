@@ -1,0 +1,40 @@
+name: Code checks
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: TypeScript, tests, and local setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --fund=false --audit=false
+
+      - name: Run type checking and tests
+        run: npm run check
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+
+      - name: Check POSIX launcher syntax
+        run: sh -n BASLAT.sh
