@@ -296,15 +296,15 @@
         <div class="step-n">2</div>
         <div class="step-body">
           <div class="step-title">Node.js yükleyin (bir kez)</div>
-          <div class="step-desc">Node.js kurulu değilse BASLAT.bat otomatik yönlendirme yapar.</div>
+          <div class="step-desc">Node.js 18+ LTS gerekir. Windows başlatıcısı yoksa indirme sayfasını açar; Linux/macOS için Node.js ve npm’i elle kurun.</div>
           <div class="step-code">https://nodejs.org → LTS sürümünü indirin</div>
         </div>
       </div>
       <div class="step">
         <div class="step-n">3</div>
         <div class="step-body">
-          <div class="step-title">BASLAT.bat dosyasına çift tıklayın</div>
-          <div class="step-desc">İlk çalıştırmada kilitli sürümlerle `npm ci` kurulur. Sunucu varsayılan olarak yalnızca bu bilgisayarda çalışır.</div>
+          <div class="step-title">Yerel başlatıcıyı çalıştırın</div>
+          <div class="step-desc">Windows: <code>BASLAT.bat</code>. Linux/macOS terminali: <code>./BASLAT.sh</code>. İlk çalıştırmada kilit dosyasındaki bağımlılıklar kurulur; sunucu yalnızca bu bilgisayarda dinler.</div>
         </div>
       </div>
       <div class="step">
@@ -312,14 +312,14 @@
         <div class="step-body">
           <div class="step-title">Tarayıcıda açın</div>
           <div class="step-code">http://127.0.0.1:3000</div>
-          <div class="step-desc" style="margin-top:6px;">BASLAT.bat bunu otomatik yapar. Siyah bir komut penceresi açık kaldığı sürece sunucu çalışır.</div>
+          <div class="step-desc" style="margin-top:6px;">Windows komut penceresi açık kaldığı sürece sunucu çalışır. Linux/macOS terminalinde süreç çalışır durumda kalmalıdır.</div>
         </div>
       </div>
     </div>
 
     <div class="alert alert-yellow" style="margin-top:20px;">
       <span class="alert-icon">⚠️</span>
-      <div class="alert-body">Proxy sunucusunu kapatmak için komut penceresini kapatmanız yeterlidir. Bilgisayar yeniden başlatıldığında BASLAT.bat'ı tekrar çalıştırın.</div>
+      <div class="alert-body">Proxy sunucusunu durdurmak için çalışan terminali kapatın. Bilgisayar yeniden başlatıldığında uygun başlatıcıyı yeniden çalıştırın.</div>
     </div>
   </div>
 
@@ -824,7 +824,7 @@
       <span class="alert-icon">❌</span>
       <div class="alert-body">
         <strong>PACS'a ulaşılamıyor / "Sonuç bulunamadı"</strong><br>
-        Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Çözüm: <code>BASLAT.bat</code> ile proxy sunucusunu başlatın ve <code>http://127.0.0.1:3000</code> adresinden açın.
+        Tarayıcı güvenliği nedeniyle direkt DICOM TCP bağlantısı yapılamaz. Windows’ta <code>BASLAT.bat</code>, Linux/macOS’ta <code>./BASLAT.sh</code> ile yerel proxy’yi başlatıp <code>http://127.0.0.1:3000</code> adresini açın.
       </div>
     </div>
 
@@ -832,7 +832,7 @@
       <span class="alert-icon">⚠️</span>
       <div class="alert-body">
         <strong>Node.js bulunamadı</strong><br>
-        <code>BASLAT.bat</code> Node.js'i bulamazsa tarayıcıda <code>https://nodejs.org</code> açar. LTS sürümünü indirip kurun, ardından BASLAT.bat'ı tekrar çalıştırın.
+        Windows’ta başlatıcı indirme sayfasını açar. Linux/macOS’ta Node.js 18+ LTS ve npm’i kurup <code>./BASLAT.sh</code> komutunu yeniden çalıştırın.
       </div>
     </div>
 
@@ -847,8 +847,8 @@
     <div class="alert alert-green">
       <span class="alert-icon">✅</span>
       <div class="alert-body">
-        <strong>PACS DICOMweb (WADO-RS) Aktifse</strong><br>
-        CORS izni verilmişse proxy gerekmez. HTML dosyasını direkt açıp PACS ayarlarında WADO-RS URL'sini girin: <code>http://[PACS-IP]:[PORT]/wado/rs</code>
+        <strong>PACS DICOMweb (WADO-RS) aktifse</strong><br>
+        Bu prototip, yerel proxy üzerinden WADO-RS uç noktasını test eder; çalışma görüntülerini indirmez/görüntülemez. PACS sorguları için yerel başlatıcıyı kullanın.
       </div>
     </div>
 
@@ -859,7 +859,7 @@
       <tr><td>RAM</td><td>4 GB</td><td>8 GB (büyük CT serileri için)</td></tr>
       <tr><td>Node.js (Proxy modu)</td><td>v18+</td><td>v20 LTS veya üzeri</td></tr>
       <tr><td>Ekran çözünürlüğü</td><td>1280×720</td><td>1920×1080</td></tr>
-      <tr><td>İşletim Sistemi</td><td>Windows 10</td><td>Windows 10/11</td></tr>
+      <tr><td>İşletim Sistemi</td><td>Windows 10/11, güncel Linux veya macOS</td><td>Güncel 64-bit Windows/Linux/macOS</td></tr>
     </table>
   </div>
 
@@ -870,7 +870,12 @@
       <h2>Yerel AI, gizlilik ve insan denetimi</h2>
     </div>
 
-    <p>Önerilen mimaride GitHub Pages yalnızca kılavuz ve sentetik örnekler sunar. Gerçek DICOM görüntüsü, PACS erişimi ve ileride eklenecek model çalıştırıcısı yerel bilgisayarda/kurum içinde kalır.</p>
+    <p>GitHub Pages statik görüntüleyici ve kılavuz dosyalarını sunar; sunucu tarafında PACS proxy'si veya çalışan AI yoktur. Görüntüleyicide yerel seçilen dosyalar bu sayfaya yüklenmez. PACS ve ileride eklenecek AI çalıştırıcısı yalnızca kullanıcının yerel bilgisayarında/kurum içinde çalışacak şekilde tasarlanır.</p>
+
+    <div class="alert alert-yellow">
+      <span class="alert-icon">🧭</span>
+      <div class="alert-body"><strong>Çok-modaliteli hedef:</strong> CT, MR, CR/DX, mamografi (MG), ultrason (US), nükleer tıp/PET (NM/PT), anjiyografi/floroskopi (XA/RF), radyoterapi ve türetilmiş DICOM nesneleri kapsamda. Bir kodu tanımak, o modality'nin her codec'ini görüntülediğimiz veya AI modelinin klinik olarak doğrulandığı anlamına gelmez. Bilinmeyen kodlar kaybolmamalı; desteklenmiyor diye açıkça işaretlenmelidir.</div>
+    </div>
 
     <div class="diagram-wrap">
       <img src="docs/visuals/local-ai-safety-architecture.svg" alt="GitHub Pages dokümantasyonu ile yerel AtikViewer, AI modeli ve radyolog incelemesi arasındaki güvenli veri akışı" style="width:100%;display:block;">
@@ -882,8 +887,18 @@
       <div class="alert-body"><strong>“Sıfır hata” mutlak olarak garanti edilemez.</strong> Güvenli hedef; sessiz hataları önlemek, belirsizlikte analizi durdurmak, her AI önerisini taslak olarak işaretlemek ve son kararı radyoloğa bırakmaktır. Bu prototip klinik tanı için doğrulanmış değildir.</div>
     </div>
 
+    <h3>Önerilen açık kaynak teknoloji adayları</h3>
+    <table class="kbd-table">
+      <tr><th>Katman</th><th>Aday</th><th>İlk kullanım fikri</th></tr>
+      <tr><td>DICOM viewport / MPR</td><td>Cornerstone3D</td><td>Mevcut arayüz kabuğunu koruyarak sentetik CT/MR ile küçük prototip.</td></tr>
+      <tr><td>DICOM metadata/nesne</td><td>dcmjs</td><td>Mevcut parser'ın yanında karşılaştırmalı test; tek başına tüm codec'lerin çözümü değil.</td></tr>
+      <tr><td>Yerel AI</td><td>MONAI + Python</td><td>İleride her modality/göreve ayrı, yerel çalıştırılan model adaptörü.</td></tr>
+      <tr><td>İleri hacim / alternatif runtime</td><td>vtk.js / ONNX Runtime</td><td>Yalnızca ölçüm ve uyumluluk prototipi başarılı olursa.</td></tr>
+    </table>
+    <p><a href="docs/STACK-AND-ROADMAP.md">Sürüm/lisans araştırması, bütün modality kapsamı ve adım adım teknik yol haritası →</a></p>
+
     <div class="steps">
-      <div class="step"><div class="step-n">1</div><div class="step-body"><div class="step-title">GitHub Pages</div><div class="step-desc">Kılavuz, mimari diyagramı ve yalnızca sentetik/kimliksiz demo içeriği.</div></div></div>
+      <div class="step"><div class="step-n">1</div><div class="step-body"><div class="step-title">GitHub Pages</div><div class="step-desc">Statik arayüz/kılavuz dağıtımı; PACS veya AI API'si yok. Yerel seçilen dosyalar sayfaya gönderilmez.</div></div></div>
       <div class="step"><div class="step-n">2</div><div class="step-body"><div class="step-title">Yerel çalışma</div><div class="step-desc"><code>npm ci</code> → <code>npm run check</code> → <code>npm start</code>. Sunucu varsayılan olarak <code>127.0.0.1</code> üzerinde açılır.</div></div></div>
       <div class="step"><div class="step-n">3</div><div class="step-body"><div class="step-title">Önce veri kontrolü, sonra analiz</div><div class="step-desc">İleride eklenecek AI, yalnızca seçilen ve desteklenen görev için yerel çalışır. Desteklenmeyen/şüpheli girdi analizden güvenli biçimde çıkarılır.</div></div></div>
       <div class="step"><div class="step-n">4</div><div class="step-body"><div class="step-title">Radyolog incelemesi</div><div class="step-desc">Öneri kabul, düzenleme, ret veya erteleme seçenekleriyle incelenir; AI raporu otomatik imzalamaz.</div></div></div>

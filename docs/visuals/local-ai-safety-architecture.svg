@@ -32,8 +32,8 @@
   <rect x="54" y="126" width="1092" height="102" rx="16" class="public"/>
   <rect x="74" y="145" width="190" height="28" rx="14" fill="#5b391b"/>
   <text x="169" y="165" text-anchor="middle" class="badge" fill="#ffd39a">PUBLIC · GITHUB PAGES</text>
-  <text x="292" y="164" class="head">Dokümantasyon + sentetik demo</text>
-  <text x="292" y="196" class="body muted">Gerçek hasta görüntüsü, PACS adresi veya AI modeli burada bulunmaz.</text>
+  <text x="292" y="164" class="head">Statik arayüz + kılavuz + sentetik demo</text>
+  <text x="292" y="196" class="body muted">Sunucu/PACS/AI servisi yok; seçilen yerel dosya bu siteye gönderilmez.</text>
   <text x="1006" y="171" text-anchor="middle" class="head" fill="#ffbe69">PHI YOK</text>
   <text x="1006" y="198" text-anchor="middle" class="tiny muted">statik site</text>
 
@@ -46,9 +46,9 @@
   <!-- Inputs -->
   <rect x="83" y="345" width="196" height="132" rx="14" class="card"/>
   <text x="181" y="382" text-anchor="middle" class="head">Görüntü</text>
-  <text x="181" y="415" text-anchor="middle" class="body">Yerel DICOM</text>
-  <text x="181" y="444" text-anchor="middle" class="small muted">veya izinli PACS</text>
-  <text x="181" y="465" text-anchor="middle" class="tiny muted">kaynak değişmeden kalır</text>
+  <text x="181" y="415" text-anchor="middle" class="body">CT · MR · CR/DX</text>
+  <text x="181" y="444" text-anchor="middle" class="small muted">MG · US · NM/PT · XA/RF</text>
+  <text x="181" y="465" text-anchor="middle" class="tiny muted">DICOM / izinli PACS</text>
 
   <!-- QA -->
   <rect x="328" y="345" width="213" height="132" rx="14" class="card"/>

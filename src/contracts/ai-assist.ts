@@ -4,6 +4,8 @@
  * AI findings must remain drafts until a qualified clinician reviews them.
  */
 
+import type { ImagingModalityCode } from './radiology.js';
+
 export type AnalysisStatus = 'complete' | 'inconclusive' | 'unsupported' | 'failed';
 
 export type ReviewAction = 'accepted' | 'modified' | 'rejected' | 'deferred';
@@ -38,7 +40,7 @@ interface AssistiveResultBase {
   readonly requestId: string;
   readonly createdAt: string;
   readonly taskId: string;
-  readonly modality: string;
+  readonly modality: ImagingModalityCode;
   readonly model: ModelProvenance;
   readonly warnings: readonly string[];
   /** This is deliberately literal: no AI result is automatically signed or finalized. */

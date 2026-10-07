@@ -92,6 +92,7 @@ input,select,textarea{font-family:var(--font-ui);font-size:12px;}
 }
 .tb-logo svg{width:22px;height:22px;flex-shrink:0;}
 .tb-ver{font-size:10px;color:var(--text3);font-family:var(--font-mono);}
+.tb-ai-state{font-size:9px;color:var(--orange);border:1px solid var(--orange);border-radius:3px;padding:2px 5px;white-space:nowrap;}
 
 /* ═══════════════════════════════════════════════════════════ MENUBAR */
 #menubar{
@@ -686,6 +687,7 @@ kbd{
     ATİK VİEWER
   </div>
   <div class="tb-ver">v1.1.0 BETA</div>
+  <div class="tb-ai-state" title="Bu sürümde çalışan AI modeli yok; AI analizi kullanılamaz">AI: MODEL YOK</div>
   <div style="flex:1"></div>
   <!-- Theme switcher -->
   <div style="display:flex;gap:5px;align-items:center;">
@@ -945,20 +947,25 @@ kbd{
           <div class="pq-row">
             <div class="pq-label">Modalite</div>
             <div class="mod-grid" style="flex:1">
-              <label class="mod-cb"><input type="checkbox" id="mod-all" checked onchange="toggleAllMod(this)"> Hepsi</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="CR"> CR</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="CT" checked> CT</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="MR" checked> MR</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="XA"> XA</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="US"> US</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="NM"> NM</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="PT"> PT</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="DX"> DX</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="MG"> MG</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="RF"> RF</label>
-              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="SC"> SC</label>
+              <label class="mod-cb"><input type="checkbox" id="mod-all" checked onchange="toggleAllMod(this)"> Tüm modaliteler (filtresiz)</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="CR" onchange="syncModalitySelection()"> CR</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="CT" onchange="syncModalitySelection()"> CT</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="MR" onchange="syncModalitySelection()"> MR</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="XA" onchange="syncModalitySelection()"> XA</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="US" onchange="syncModalitySelection()"> US</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="NM" onchange="syncModalitySelection()"> NM</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="PT" onchange="syncModalitySelection()"> PT</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="DX" onchange="syncModalitySelection()"> DX</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="MG" onchange="syncModalitySelection()"> MG</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="RF" onchange="syncModalitySelection()"> RF</label>
+              <label class="mod-cb"><input type="checkbox" class="mod-cb-item" value="SC" onchange="syncModalitySelection()"> SC</label>
             </div>
           </div>
+          <div class="pq-row">
+            <div class="pq-label">Ek DICOM kodları</div>
+            <input class="pq-input" id="pq-modality-extra" placeholder="Örn. SEG, SR, ECG" oninput="syncModalitySelection()" aria-label="Ek DICOM modality kodları">
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin:-3px 0 6px 74px;">Birden fazla kodu virgül veya boşlukla ayırın. Bilinmeyen DICOM kodları da girilebilir.</div>
           <button class="pq-btn" onclick="doPACSQuery()">🔍 SORGULA (C-FIND)</button>
           <button class="pq-btn red" onclick="testWadoEndpoint()" style="margin-top:4px;">🔍 WADO-RS UÇ NOKTASINI TEST ET</button>
         </div>
@@ -2859,11 +2866,45 @@ function delPACSServer() {
 function showPACSSettings() { document.getElementById('modal-pacs').classList.add('show'); }
 function savePACSSettings() { savePACSServersToStorage(); closeModal('modal-pacs'); showNotif('Ayarlar kaydedildi','ok'); }
 
+function isLocalLoopbackHost() {
+  return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(location.hostname.toLowerCase());
+}
+
+function localApiUrl(path) {
+  return new URL(path.replace(/^\/+/, ''), location.href).toString();
+}
+
+async function probeLocalProxy() {
+  if (!isLocalLoopbackHost() || location.protocol === 'file:') return false;
+  try {
+    const response = await fetch(localApiUrl('api/health'), {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false;
+    const status = await response.json();
+    return status.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+async function requireLocalProxy() {
+  if (!isLocalLoopbackHost() || location.protocol === 'file:') {
+    showNotif('GitHub Pages/statik veya uzak mod: PACS isteği gönderilmedi. PACS için uygulamayı yerel bilgisayarda başlatın.', 'warn', 8000);
+    return false;
+  }
+  if (await probeLocalProxy()) return true;
+  showNotif('Yerel proxy bulunamadı; hasta/PACS sorgusu gönderilmedi. Windows: BASLAT.bat · Linux/macOS: ./BASLAT.sh', 'warn', 8000);
+  return false;
+}
+
 async function testPACSConnection() {
   const selIdx = document.getElementById('pacs-server-sel')?.value;
   const server = selIdx !== undefined && selIdx !== '' ? APP.pacsServers[parseInt(selIdx)] :
                  APP.pacsServers.find(s => s.isDefault) || APP.pacsServers[0];
   if (!server) { showNotif('Önce bir PACS sunucusu ekleyin', 'warn'); return; }
+  if (!(await requireLocalProxy())) return;
 
   showNotif(`Bağlantı test ediliyor: ${server.desc}...`, 'info');
   server.status = 'testing';
@@ -2871,7 +2912,7 @@ async function testPACSConnection() {
   document.getElementById('pacs-conn-dot').className = 'sb-conn-dot';
 
   try {
-    const r = await fetch(`/api/pacs/echo?ip=${encodeURIComponent(server.ip)}&port=${server.port}&ae=${encodeURIComponent(server.ae)}`);
+    const r = await fetch(localApiUrl(`api/pacs/echo?ip=${encodeURIComponent(server.ip)}&port=${server.port}&ae=${encodeURIComponent(server.ae)}`));
     const data = await r.json();
     server.status = data.ok ? 'ok' : 'err';
     APP.pacsConnected = data.ok;
@@ -2890,10 +2931,11 @@ async function testPACSConnection() {
 
 async function testSelectedPACS() {
   if (APP.editingServerIdx < 0) { showNotif('Bir sunucu seçin','warn'); return; }
+  if (!(await requireLocalProxy())) return;
   const s = APP.pacsServers[APP.editingServerIdx];
   s.status = 'testing'; refreshPACSServerList();
   try {
-    const r = await fetch(`/api/pacs/echo?ip=${encodeURIComponent(s.ip)}&port=${s.port}&ae=${encodeURIComponent(s.ae)}`);
+    const r = await fetch(localApiUrl(`api/pacs/echo?ip=${encodeURIComponent(s.ip)}&port=${s.port}&ae=${encodeURIComponent(s.ae)}`));
     const data = await r.json();
     s.status = data.ok ? 'ok' : 'err';
     refreshPACSServerList();
@@ -2907,20 +2949,29 @@ async function testSelectedPACS() {
 async function doPACSQuery() {
   const server = getActiveServer();
   if (!server) { showNotif('PACS sunucusu seçin', 'warn'); return; }
+  if (!(await requireLocalProxy())) return;
 
   const name = document.getElementById('pq-name').value.trim();
   const id   = document.getElementById('pq-id').value.trim();
   const acc  = document.getElementById('pq-accession').value.trim();
   const from = document.getElementById('pq-date-from').value;
   const to   = document.getElementById('pq-date-to').value;
-  const mods = [...document.querySelectorAll('.mod-cb-item:checked')].map(e=>e.value);
+  const allModalities = document.getElementById('mod-all').checked;
+  const selectedModalities = [...document.querySelectorAll('.mod-cb-item:checked')].map(e => e.value);
+  const customModalities = document.getElementById('pq-modality-extra').value
+    .split(/[,\s\\]+/).map(value => value.trim().toUpperCase()).filter(Boolean);
+  const modalities = allModalities ? [] : [...new Set([...selectedModalities, ...customModalities])];
+  if (!allModalities && modalities.length === 0) {
+    showNotif('Tüm modaliteleri seçin veya en az bir modality kodu belirtin.', 'warn');
+    return;
+  }
 
   document.getElementById('pacs-spinner').style.display = 'flex';
   document.getElementById('pacs-result-count').textContent = 'Sorgulanıyor...';
   setStatus(`C-FIND sorgusu: ${server.desc}`);
 
   try {
-    const resp = await fetch('/api/pacs/find', {
+    const resp = await fetch(localApiUrl('api/pacs/find'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2928,7 +2979,7 @@ async function doPACSQuery() {
         serverAE: server.ae, clientAE: 'ATIKVIEWER',
         patientName: name, patientId: id,
         accessionNumber: acc, dateFrom: from, dateTo: to,
-        modality: mods.join('\\'),
+        modality: modalities.join('\\'),
       })
     });
     const data = await resp.json();
@@ -2956,7 +3007,7 @@ async function doPACSQuery() {
 function generateDemoPatients(nameFilter, idFilter, mods, count) {
   const names = ['DEMO^HASTA001','DEMO^HASTA002','DEMO^HASTA003','DEMO^HASTA004','DEMO^HASTA005',
                  'DEMO^HASTA006','DEMO^HASTA007','DEMO^HASTA008','DEMO^HASTA009','DEMO^HASTA010'];
-  const modList = mods.length ? mods : ['CT','MR','XR','US'];
+  const modList = mods.length ? mods : ['CT','MR','CR','DX','MG','US','NM','PT','XA','RF'];
   const results = [];
   for (let i = 0; i < count; i++) {
     const m = modList[i % modList.length];
@@ -2974,8 +3025,14 @@ function generateDemoPatients(nameFilter, idFilter, mods, count) {
 }
 
 function getStudyDesc(mod) {
-  const descs = {CT:['THORAX KONTRASTLI','BEYİN BT','KARın CT'],MR:['BEYİN MR','LUMBAR MR','DİZ MR'],
-                 XR:['AKCİĞER GRAFİSİ','EL GRAFİSİ'],US:['BATIN US','TİROİD US']};
+  const descs = {
+    CT: ['SENTETİK TORAKS BT', 'SENTETİK BEYİN BT'],
+    MR: ['SENTETİK BEYİN MR', 'SENTETİK DİZ MR'],
+    CR: ['SENTETİK GRAFİ'], DX: ['SENTETİK DİJİTAL GRAFİ'],
+    MG: ['SENTETİK MAMOGRAFİ'], US: ['SENTETİK ULTRASON'],
+    NM: ['SENTETİK NÜKLEER TIP'], PT: ['SENTETİK PET'],
+    XA: ['SENTETİK ANJİYOGRAFİ'], RF: ['SENTETİK FLOROSKOPİ'],
+  };
   const d = descs[mod]||['Görüntüleme'];
   return d[Math.floor(Math.random()*d.length)];
 }
@@ -3008,12 +3065,13 @@ async function testWadoEndpoint() {
   const result = APP.pacsQueryResults[APP.selectedPACSResult];
   const server = getActiveServer();
   if (!server) { showNotif('PACS sunucusu seçin', 'warn'); return; }
+  if (!(await requireLocalProxy())) return;
 
   showNotif(`WADO-RS uç noktası kontrol ediliyor: ${result.description}`, 'info');
   setStatus('WADO-RS uç noktası kontrol ediliyor...');
   try {
     const params = new URLSearchParams({ serverIp: server.ip, serverPort: server.port, studyUID: result.studyUID });
-    const r = await fetch(`/api/pacs/wado?${params}`);
+    const r = await fetch(localApiUrl(`api/pacs/wado?${params}`));
     const data = await r.json();
     if (data.ok) {
       setStatus(`WADO-RS yanıt verdi: ${result.description} · görüntüler indirilmedi`);
@@ -3042,7 +3100,17 @@ function getActiveServer() {
 }
 
 function toggleAllMod(cb) {
-  document.querySelectorAll('.mod-cb-item').forEach(el => el.checked = cb.checked);
+  if (cb.checked) {
+    document.querySelectorAll('.mod-cb-item').forEach(el => { el.checked = false; });
+    document.getElementById('pq-modality-extra').value = '';
+  }
+}
+
+function syncModalitySelection() {
+  const hasExplicitFilter = document.querySelector('.mod-cb-item:checked')
+    || document.getElementById('pq-modality-extra').value.trim();
+  if (hasExplicitFilter) document.getElementById('mod-all').checked = false;
+  else document.getElementById('mod-all').checked = true;
 }
 
 // ── PANEL / TAB ───────────────────────────────────────────────
@@ -3275,12 +3343,24 @@ resizeObserver.observe(document.getElementById('vp-area'));
   if (df) df.value = weekAgo;
   if (dt) dt.value = today;
 
-  showNotif('Atik Viewer hazır. Dosya açın veya PACS sunucusuna bağlanın.', 'info', 4000);
-  fetch('/api/health').then(r => r.json()).then(d => {
-    if (d.ok) showNotif('✔ Proxy sunucusu aktif', 'ok', 3000);
-  }).catch(() => {
-    showNotif('⚠ Proxy bulunamadı — BASLAT.bat çalıştırın', 'warn', 6000);
-  });
+  showNotif('Atik Viewer hazır. Yerel dosya açabilir veya PACS sunucusu yapılandırabilirsiniz.', 'info', 4000);
+  if (isLocalLoopbackHost() && location.protocol !== 'file:') {
+    probeLocalProxy().then(ready => {
+      if (ready) {
+        setStatus('Yerel proxy aktif · PACS yalnızca bu bilgisayarda');
+        showNotif('✔ Yerel proxy sunucusu aktif', 'ok', 3000);
+      } else {
+        setStatus('Statik yerel dosya modu · PACS/AI API kapalı');
+        showNotif('Statik yerel dosya modu: PACS/AI için BASLAT.bat veya ./BASLAT.sh kullanın.', 'info', 6000);
+      }
+    });
+  } else if (location.protocol === 'file:') {
+    setStatus('Yerel HTML dosyası · PACS/AI API kapalı');
+    showNotif('Yerel HTML modu: dosya açma kullanılabilir; PACS/AI için BASLAT.bat veya ./BASLAT.sh kullanın.', 'info', 7000);
+  } else {
+    setStatus('GitHub Pages/uzak statik mod · PACS/AI isteği gönderilmez');
+    showNotif('GitHub Pages statik modu: yerel dosya görüntüleme kullanılabilir; PACS/AI sorgusu gönderilmez.', 'info', 7000);
+  }
 })();
 </script>
 </body>
