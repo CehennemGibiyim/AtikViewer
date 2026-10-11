@@ -70,9 +70,10 @@ interface CharlsModule {
   JpegLSDecoder: new () => JlsDecoderT;
 }
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const WASM_ASSETS: Record<WasmName, { js: string; wasm: string; global: string }> = {
-  openjpeg: { js: "/codecs/openjpegwasm_decode.js", wasm: "/codecs/openjpegwasm_decode.wasm", global: "OpenJPEGWASM" },
-  charls: { js: "/codecs/charlswasm_decode.js", wasm: "/codecs/charlswasm_decode.wasm", global: "CharLSWASM" },
+  openjpeg: { js: `${BASE}/codecs/openjpegwasm_decode.js`, wasm: `${BASE}/codecs/openjpegwasm_decode.wasm`, global: "OpenJPEGWASM" },
+  charls: { js: `${BASE}/codecs/charlswasm_decode.js`, wasm: `${BASE}/codecs/charlswasm_decode.wasm`, global: "CharLSWASM" },
 };
 
 function injectScript(src: string): Promise<void> {
