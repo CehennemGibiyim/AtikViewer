@@ -185,6 +185,51 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
     };
     setReport((r) => ({ ...r, findings: [...r.findings, f], findingsApproval: { ...r.findingsApproval, [f.id]: "onaylandi" }, findingsText: `${r.findingsText}\n\n+ ${label} [Kesit ${slice}] (radyolog eklemesi)` }));
   };
+
+  /** FHIR dosyasını fetch ile alıp indirir (sunucuda da, statik demoda da çalışır). */
+  const downloadFhir = async (id: number) => {
+    try {
+      const r = await fetch(`/api/reports/${id}/fhir`);
+      if (!r.ok) throw new Error(((await r.json()) as { error?: string }).error ?? "FHIR dışa aktarılamadı");
+      const blob = new Blob([await r.text()], { type: "application/fhir+json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `rapor-${id}.fhir.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (e) { setError(e instanceof Error ? e.message : "FHIR dışa aktarılamadı"); }
+  };
+
+  /**
+   * Yazdırma: rapor kâğıdı, uygulama düzeninin (sabit yükseklik/overflow) dışında,
+   * body'nin doğrudan çocuğu olan geçici bir #print-root içine kopyalanır; böylece
+   * tarayıcı yazdırma önizlemesi boş sayfa yerine raporun tamamını (çok sayfa) basar.
+   */
+  const printReport = () => {
+    const paper = document.getElementById("report-paper");
+    if (!paper) { window.print(); return; }
+    const clone = paper.cloneNode(true) as HTMLElement;
+    // Düzenleme modundaki alanların değerleri kopyaya geçmez; düz metne çevrilir.
+    const src = paper.querySelectorAll("textarea, input, select");
+    clone.querySelectorAll("textarea, input, select").forEach((el, i) => {
+      const v = (src[i] as HTMLInputElement | undefined)?.value ?? "";
+      const span = document.createElement("div");
+      span.style.whiteSpace = "pre-wrap";
+      span.textContent = v;
+      el.replaceWith(span);
+    });
+    const root = document.createElement("div");
+    root.id = "print-root";
+    root.appendChild(clone);
+    document.body.appendChild(root);
+    const cleanup = () => { root.remove(); window.removeEventListener("afterprint", cleanup); };
+    window.addEventListener("afterprint", cleanup);
+    // Görseller (anahtar kesit) yüklenmeden yazdırmayı başlatma
+    const imgs = Array.from(root.querySelectorAll("img")).filter((im) => !im.complete);
+    void Promise.all(imgs.map((im) => new Promise<void>((res) => { im.onload = im.onerror = () => res(); })))
+      .then(() => setTimeout(() => window.print(), 50));
+  };
+
   const addAddendum = async () => {
     if (!report.id || addText.trim().length < 3) return;
     setBusy(true);
@@ -228,8 +273,8 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                 <button onClick={() => setDialog(true)} className="cursor-pointer rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400">✓ Onayla</button>
               </>
             )}
-            {report.id && <a href={`/api/reports/${report.id}/fhir`} className="rounded-lg border border-[#2d3b4e] bg-[#141b24] px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-[#1a2330]">FHIR ⬇</a>}
-            <button onClick={() => window.print()} className="cursor-pointer rounded-lg bg-cyan-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400">🖨 Yazdır / PDF</button>
+            {report.id && <button type="button" onClick={() => void downloadFhir(report.id!)} className="cursor-pointer rounded-lg border border-[#2d3b4e] bg-[#141b24] px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-[#1a2330]">FHIR ⬇</button>}
+            <button onClick={printReport} className="cursor-pointer rounded-lg bg-cyan-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400">🖨 Yazdır / PDF</button>
             <button onClick={onClose} className="cursor-pointer rounded-lg border border-[#2d3b4e] bg-[#141b24] p-1.5 text-xs text-slate-400 hover:text-slate-100">✕</button>
           </div>
         </div>

@@ -33,11 +33,18 @@ input[type="range"]::-webkit-slider-thumb {
 
 details > summary::-webkit-details-marker { display: none; }
 
-/* Yazdırma: yalnızca A4 rapor kâğıdı */
+/* Yazdırma: yalnızca A4 rapor kâğıdı. Kâğıt, ReportPrintModal.printReport ile body'ye eklenen
+   #print-root içine kopyalanır; uygulamanın geri kalanı yazdırmada gizlenir. */
 @media print {
   @page { size: A4 portrait; margin: 12mm 15mm; }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
-  body * { visibility: hidden !important; }
-  #report-paper, #report-paper * { visibility: visible !important; }
-  #report-paper { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+  body > *:not(#print-root) { display: none !important; }
+  #print-root { display: block !important; position: static !important; width: 100% !important; }
+  #print-root #report-paper {
+    position: static !important; display: block !important; width: 100% !important; max-width: none !important;
+    min-height: 0 !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  }
+  #print-root, #print-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #print-root tr, #print-root img { break-inside: avoid; }
 }
+@media screen { #print-root { display: none; } }

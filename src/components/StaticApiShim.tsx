@@ -136,6 +136,13 @@ async function route(method: string, url: URL, init?: RequestInit): Promise<Resp
     if (verified.length === 0) return fail("Önce en az bir bulguyu 'Onayla/Düzenlendi' olarak işaretleyin");
     return json({ text: `${verified.map((f, i) => `${i + 1}) ${f.label} (Kesit ${f.slice})`).join("; ")}. Klinik korelasyon önerilir.`, source: "kural" });
   }
+  const fh = /^\/api\/reports\/(\d+)\/fhir$/.exec(p);
+  if (fh && method === "GET") {
+    const rep = load<SavedReport[]>(K_REPORTS, []).find((x) => x.id === Number(fh[1]));
+    if (!rep) return fail("Rapor bulunamadı", 404);
+    const { buildFhirReport } = await import("@/lib/fhir");
+    return new Response(JSON.stringify(buildFhirReport(rep), null, 2), { headers: { "Content-Type": "application/fhir+json; charset=utf-8" } });
+  }
   const m = /^\/api\/reports\/(\d+)(\/addenda)?$/.exec(p);
   if (m) {
     const id = Number(m[1]);
