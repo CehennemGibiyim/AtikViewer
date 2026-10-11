@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #070a0f;
+}
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: #0b0f16; }
+*::-webkit-scrollbar-thumb { background: #243043; border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: #31415a; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #1b2532;
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22d3ee;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+}
+
+details > summary::-webkit-details-marker { display: none; }
+
+/* Yazdırma: yalnızca A4 rapor kâğıdı */
+@media print {
+  @page { size: A4 portrait; margin: 12mm 15mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
+  body * { visibility: hidden !important; }
+  #report-paper, #report-paper * { visibility: visible !important; }
+  #report-paper { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+}
