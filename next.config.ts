@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
+// GitHub Pages (statik demo) derlemesi: GITHUB_PAGES=true ile açılır. Ayrıntı: scripts/prepare-pages.sh
+const pages = process.env.GITHUB_PAGES === "true";
+const basePath = pages ? (process.env.NEXT_PUBLIC_BASE_PATH ?? "") : "";
+
 const nextConfig: NextConfig = {
-  async headers() {
+  ...(pages ? { output: "export" as const, basePath, trailingSlash: true, images: { unoptimized: true } } : {}),
+  // statik dışa aktarımda başlıklar desteklenmez
+  ...(pages ? {} : { async headers() {
     return [
       {
         source: "/",
@@ -27,7 +33,7 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-  },
+  } }),
 };
 
 export default nextConfig;
