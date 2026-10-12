@@ -32,9 +32,14 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.ts ./next.config.ts
+# Şema uygulaması (drizzle-kit push) için gerekli dosyalar
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/src/db/schema.ts ./src/db/schema.ts
 RUN mkdir -p /app/.data && chown -R app:app /app
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -fsS http://127.0.0.1:3000/api/health || exit 1
-CMD ["npm", "start"]
+# İlk açılışta (ve her sürüm güncellemesinde) şemayı uygular, sonra uygulamayı başlatır.
+# Render ve docker compose aynı komutu kullanır; DATABASE_URL zorunludur.
+CMD ["sh", "-c", "./node_modules/.bin/drizzle-kit push --config=drizzle.config.ts --force && npm start"]

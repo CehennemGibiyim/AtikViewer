@@ -531,6 +531,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
   }, []);
 
   const saveToServer = async () => {
+    if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") { toast("Statik demoda sunucu yok; dosyalar tarayıcınızdan dışarı çıkmaz. Sunucuya kaydetmek için tam sürümü (Docker/Render) kullanın."); return; }
     if (!series) { toast("Önce bir seri açın."); return; }
     if (savingFiles) return;
     if (!series.files?.length) { toast("Örnek vakaların orijinal dosyası yok. Sunucuya kaydetmek için yerel DICOM dosyalarını açın."); return; }

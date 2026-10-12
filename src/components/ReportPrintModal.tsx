@@ -458,7 +458,7 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
             <div className="mt-3 rounded-md border border-[#232e40] bg-[#141b24] p-2.5 text-xs text-slate-200">
               <div className="font-bold">{user.title} {user.fullName}</div>
               <div className="text-slate-400">Sicil/diploma: {user.regNo || <span className="text-amber-300">tanımlı değil</span>}</div>
-              <a href="/yonetim" className="mt-1 inline-block text-[11px] text-cyan-400 hover:underline">Hekim profilini düzenle →</a>
+              <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/yonetim`} className="mt-1 inline-block text-[11px] text-cyan-400 hover:underline">Hekim profilini düzenle →</a>
             </div>
             <p className="mt-3 rounded-md border border-amber-400/40 bg-amber-400/10 p-2.5 text-[11px] leading-relaxed text-amber-200">
               ⚠ Uygulamada oturum açma kapalıdır: bu onay <b>kimlik doğrulaması yapmaz</b>. Rapora yukarıdaki ad

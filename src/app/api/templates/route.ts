@@ -4,17 +4,10 @@ import { db } from "@/db";
 import { reportTemplates } from "@/db/schema";
 import { audit } from "@/lib/server/audit";
 import { authorize } from "@/lib/server/auth";
+import { SEED } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
 
-const SEED = [
-  { name: "BT Beyin — Normal", modality: "CT", bodyPart: "BEYİN", technique: "Aksiyel planda kontrastsız beyin BT incelemesi değerlendirildi.", findings: "Beyin parankim dansiteleri doğal. Gri-beyaz cevher ayrımı korunmuş. Akut kanama, kitle etkisi veya orta hat şiftine ait bulgu izlenmedi. Ventriküler sistem ve sisternalar doğal genişlikte. Kemik yapılarda patolojik bulgu yok.", impression: "Akut patolojik bulgu saptanmamıştır.", recommendation: "Klinik korelasyon önerilir." },
-  { name: "BT Beyin — Hiperdens odak (şablon)", modality: "CT", bodyPart: "BEYİN", technique: "Aksiyel planda kontrastsız beyin BT incelemesi değerlendirildi.", findings: "[KONUM] yerleşimli, yaklaşık [BOYUT] mm boyutunda, ortalama [HU] HU dansitesinde hiperdens odak izlenmektedir. Çevresinde [ödem durumu]. Orta hat şifti: [var/yok]. Ventriküler sistem: [durum].", impression: "[KONUM] hiperdens lezyon — akut kanama ile uyumlu/ayırıcı tanı: [..].", recommendation: "Acil klinik korelasyon ve kontrol görüntüleme önerilir." },
-  { name: "BT Toraks — Normal", modality: "CT", bodyPart: "TORAKS", technique: "Aksiyel planda toraks BT incelemesi (akciğer ve mediasten pencereleri) değerlendirildi.", findings: "Her iki akciğer parankiminde aktif infiltrasyon, nodül veya kitle izlenmedi. Plevral effüzyon yok. Mediastende patolojik boyutta lenf nodu saptanmadı. Kalp ve büyük damarlar doğal.", impression: "Akut patolojik bulgu saptanmamıştır.", recommendation: "Klinik korelasyon önerilir." },
-  { name: "BT Toraks — Pulmoner nodül (şablon)", modality: "CT", bodyPart: "TORAKS", technique: "Aksiyel planda toraks BT incelemesi değerlendirildi.", findings: "[Sağ/Sol] akciğer [lob/segment]'de, [BOYUT] mm çapında, [solid/subsolid/buzlu cam] [düzgün/spiküle] konturlu nodül izlenmektedir. Plevral retraksiyon: [var/yok]. Mediastinal lenfadenopati: [var/yok].", impression: "[Sağ/Sol] [lob] [BOYUT] mm nodül. Lung-RADS: [..].", recommendation: "Kılavuz doğrultusunda kontrol BT / ileri inceleme önerilir." },
-  { name: "Akciğer Grafisi PA — Normal", modality: "CR", bodyPart: "TORAKS", technique: "PA pozisyonda ayakta akciğer grafisi değerlendirildi.", findings: "Her iki akciğer alanı havalanması doğal. Aktif infiltrasyon veya kitle saptanmadı. Kardiyotorasik oran normal sınırlarda. Kostofrenik sinüsler açık. Mediasten orta hatta.", impression: "Akut kardiyopulmoner patoloji saptanmamıştır.", recommendation: "Klinik korelasyon önerilir." },
-  { name: "MR Beyin — Normal", modality: "MR", bodyPart: "BEYİN", technique: "Çok sekanslı kontrastsız beyin MR incelemesi değerlendirildi.", findings: "Beyin parankim sinyalleri doğal. Difüzyon kısıtlaması izlenmedi. Ventriküler sistem ve subaraknoid mesafeler doğal. Orta hat yapıları simetrik. Kitle veya kanama ile uyumlu sinyal değişikliği yok.", impression: "Akut patolojik bulgu saptanmamıştır.", recommendation: "Klinik korelasyon önerilir." },
-];
 
 export async function GET() {
   const a = await authorize();

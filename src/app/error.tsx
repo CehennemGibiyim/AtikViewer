@@ -12,7 +12,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         <p className="mt-2 text-sm leading-relaxed text-slate-400">Bir görüntüleme hatası oluştu. Hasta kayıtlarını veya raporları silmeden tekrar deneyebilirsiniz.</p>
         <div className="mt-5 flex flex-wrap gap-2">
           <button type="button" onClick={reset} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Tekrar dene</button>
-          <a href="/" className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200">Görüntüleyiciyi yeniden aç</a>
+          <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/`} className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200">Görüntüleyiciyi yeniden aç</a>
         </div>
       </section>
     </div>

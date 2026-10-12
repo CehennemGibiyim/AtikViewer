@@ -18,6 +18,7 @@ const OPERATOR = { fullName: "Demo Radyolog", title: "Uzm. Dr.", regNo: "" };
 const K_REPORTS = "atik-demo-reports";
 const K_ADDENDA = "atik-demo-addenda";
 const K_STATE = "atik-demo-state:";
+const K_TEMPLATES = "atik-demo-templates";
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -179,7 +180,27 @@ async function route(method: string, url: URL, init?: RequestInit): Promise<Resp
     }
   }
 
-  if ((p === "/api/studies" || p === "/api/notifications" || p === "/api/templates") && method === "GET") return json([]);
+  if (p === "/api/templates") {
+    const { SEED } = await import("@/lib/templates");
+    const seeded = SEED.map((t, i) => ({ id: i + 1, ...t }));
+    const custom = load<{ id: number; name: string; modality: string; bodyPart: string; technique: string; findings: string; impression: string; recommendation: string }[]>(K_TEMPLATES, []);
+    if (method === "GET") return json([...seeded, ...custom]);
+    if (method === "POST") {
+      const b = await body<Record<string, string>>();
+      if (!b?.name?.trim()) return fail("Şablon adı gerekli");
+      const id = custom.reduce((m, x) => Math.max(m, x.id), 1000) + 1;
+      custom.push({ id, name: b.name.trim().slice(0, 120), modality: b.modality ?? "", bodyPart: b.bodyPart ?? "", technique: b.technique ?? "", findings: b.findings ?? "", impression: b.impression ?? "", recommendation: b.recommendation ?? "" });
+      save(K_TEMPLATES, custom);
+      return json({ ok: true, id });
+    }
+    if (method === "DELETE") {
+      const id = Number(url.searchParams.get("id"));
+      if (id <= 1000) return fail("Hazır şablonlar silinemez", 403);
+      save(K_TEMPLATES, custom.filter((x) => x.id !== id));
+      return json({ ok: true });
+    }
+  }
+  if ((p === "/api/studies" || p === "/api/notifications") && method === "GET") return json([]);
   return null;
 }
 

@@ -35,7 +35,7 @@ export default function ClientRecovery() {
   return (
     <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-3 bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-xl">
       Eski arayüz paketi algılandı. Düğmelerin çalışması için güncelleyin.
-      <a href={`/?fresh=${BUILD}`} className="rounded bg-slate-950 px-3 py-1.5 text-white">Şimdi yenile</a>
+      <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/?fresh=${BUILD}`} className="rounded bg-slate-950 px-3 py-1.5 text-white">Şimdi yenile</a>
     </div>
   );
 }
