@@ -25,7 +25,9 @@ export type ToolName =
   | "ellipse"
   | "polygon"
   | "arrow"
-  | "calib";
+  | "calib"
+  | "ellipsoid"
+  | "deviation";
 
 export type Layout = "1x1" | "1x2" | "2x1" | "2x2" | "1x3" | "3x1" | "2x3" | "3x2";
 
@@ -258,6 +260,18 @@ export interface PaletteColorLUT {
   b: Uint8Array | Uint16Array;
 }
 
+export interface SuvInfo {
+  /** SUVbw = piksel (Bq/mL) × factor. null ise hesaplanamadı; neden `note` içinde. */
+  factor: number | null;
+  units: string;
+  kind: "SUVbw";
+  note: string;
+  weightKg?: number;
+  doseBq?: number;
+  halfLifeS?: number;
+  deltaS?: number;
+}
+
 export interface SeriesData {
   id: string;
   seriesUid?: string;
@@ -277,6 +291,14 @@ export interface SeriesData {
   sliceThickness: number;
   sliceSpacing?: number;
   slicePositions?: number[];
+  /** Kesit başına ImagePositionPatient [x,y,z] (mm), kesit sırasıyla. */
+  ipp?: number[][];
+  /** Kesit başına SOP Instance UID ve ortak SOP Class UID (KO/SR başvuruları için). */
+  sopUids?: string[];
+  sopClassUid?: string;
+  /** Sütun (x) yönündeki piksel aralığı; `pixelSpacing` satır (y) aralığıdır. */
+  pixelSpacingX?: number;
+  suv?: SuvInfo;
   orientation?: number[];
   frameOfRef?: string;
   defaultWL: number;
@@ -336,7 +358,7 @@ export interface HangingProtocolRule {
 
 // ───────────── Annotations, Key Images, Reports & State ─────────────
 
-export type AnnotationKind = "length" | "angle" | "cobb" | "arrow" | "rect" | "ellipse" | "polygon" | "calib";
+export type AnnotationKind = "length" | "angle" | "cobb" | "arrow" | "rect" | "ellipse" | "polygon" | "calib" | "ellipsoid" | "deviation";
 
 export interface AnnotationStats {
   mean: number;

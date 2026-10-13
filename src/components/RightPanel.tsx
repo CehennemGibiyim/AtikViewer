@@ -304,7 +304,7 @@ export default function RightPanel(p: Props) {
             {[...p.annotations].sort((a, b) => a.slice - b.slice).map((a) => (
               <div key={a.id} className="flex items-start gap-2 rounded-lg border border-[#1e2735] bg-[#0e141d] p-2 text-[11px]">
                 <button onClick={() => p.onGotoSlice(a.slice)} className="cursor-pointer rounded border border-cyan-500/40 bg-cyan-950 px-1.5 py-0.5 font-mono text-[10px] font-bold text-cyan-300">K{a.slice + 1}</button>
-                <div className="min-w-0 flex-1"><div className="font-semibold text-slate-200">{KIND_LABEL[a.kind]}</div><div className="font-mono text-[10.5px] text-slate-400">{annotationSummary(a, p.pxMm, unit)}</div></div>
+                <div className="min-w-0 flex-1"><div className="font-semibold text-slate-200">{KIND_LABEL[a.kind]}</div><div className="font-mono text-[10.5px] text-slate-400">{annotationSummary(a, p.pxMm, unit, series?.suv?.factor)}</div></div>
                 <button onClick={() => p.onDeleteAnnotation(a.id)} className="cursor-pointer text-slate-500 hover:text-rose-400" title="Sil">✕</button>
               </div>
             ))}

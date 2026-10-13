@@ -6,17 +6,17 @@ import type { SeriesData } from "./types";
  * Bellekteki görüntüden SIFIRDAN yazılır: orijinal etiketler, özel (private) etiketler ve UID'ler taşınmaz.
  * Korunanlar: modalite, piksel verisi, piksel aralığı, kesit kalınlığı/konumu, pencere değerleri, cinsiyet yok.
  */
-const enc = new TextEncoder();
+export const enc = new TextEncoder();
 const LONG_VR = new Set(["OB", "OW", "OF", "SQ", "UT", "UN"]);
 
-function pad(b: Uint8Array, padByte: number): Uint8Array {
+export function pad(b: Uint8Array, padByte: number): Uint8Array {
   if (b.length % 2 === 0) return b;
   const o = new Uint8Array(b.length + 1);
   o.set(b);
   o[b.length] = padByte;
   return o;
 }
-function el(group: number, elem: number, vr: string, value: Uint8Array): Uint8Array {
+export function el(group: number, elem: number, vr: string, value: Uint8Array): Uint8Array {
   const long = LONG_VR.has(vr);
   const out = new Uint8Array((long ? 12 : 8) + value.length);
   const dv = new DataView(out.buffer);
@@ -29,14 +29,14 @@ function el(group: number, elem: number, vr: string, value: Uint8Array): Uint8Ar
   out.set(value, long ? 12 : 8);
   return out;
 }
-const str = (g: number, e: number, vr: string, s: string) => el(g, e, vr, pad(enc.encode(s), 0x20));
-const uidEl = (g: number, e: number, s: string) => el(g, e, "UI", pad(enc.encode(s), 0));
-function us(g: number, e: number, n: number) {
+export const str = (g: number, e: number, vr: string, s: string) => el(g, e, vr, pad(enc.encode(s), 0x20));
+export const uidEl = (g: number, e: number, s: string) => el(g, e, "UI", pad(enc.encode(s), 0));
+export function us(g: number, e: number, n: number) {
   const b = new Uint8Array(2);
   new DataView(b.buffer).setUint16(0, n, true);
   return el(g, e, "US", b);
 }
-function concat(parts: Uint8Array[]): Uint8Array {
+export function concat(parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));
   let o = 0;
   for (const p of parts) { out.set(p, o); o += p.length; }

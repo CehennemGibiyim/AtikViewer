@@ -9,6 +9,10 @@ import ReportPrintModal, { type ReportData, type SaveResult } from "./ReportPrin
 import WorklistModal from "./WorklistModal";
 import NotificationsBell from "./NotificationsBell";
 import VolumeView from "./VolumeView";
+import ExportMenu from "./ExportMenu";
+import NoduleTracker from "./NoduleTracker";
+import FusionControl, { type FusionConfig } from "./FusionControl";
+import { setRefLines } from "@/lib/panelRegistry";
 import SRViewer from "./SRViewer";
 import PDFViewer from "./PDFViewer";
 import ECGViewer from "./ECGViewer";
@@ -58,6 +62,8 @@ const TOOLS: { id: ToolName; label: string; hint: string }[] = [
   { id: "rect", label: "Dikdörtgen", hint: "ROI istatistiği" }, { id: "ellipse", label: "Elips", hint: "ROI istatistiği" },
   { id: "polygon", label: "Çokgen", hint: "Noktalar, çift tık: bitir" }, { id: "arrow", label: "Ok", hint: "İşaret oku + not" },
   { id: "calib", label: "Kalibre", hint: "Bilinen uzunluğu çiz, mm gir" },
+  { id: "ellipsoid", label: "Elipsoid", hint: "Elips çiz, 3. çapı gir → hacim (mL) = π/6·d1·d2·d3" },
+  { id: "deviation", label: "Sapma", hint: "2 nokta referans doğrusu + 1 nokta: dik uzaklık (mm)" },
 ];
 
 const ts = () => new Date().toLocaleTimeString("tr-TR", { hour12: false });
@@ -167,6 +173,9 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<ToolName>("wl");
   const [hoverVal, setHoverVal] = useState<number | null>(null);
+  const [fusionCfg, setFusionCfg] = useState<FusionConfig | null>(null);
+  const [refLinesOn, setRefLinesOn] = useState(true);
+  const [noduleOpen, setNoduleOpen] = useState(false);
   const [rotation, setRotation] = useState<Rot>(0);
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
@@ -223,7 +232,27 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const all = useMemo(() => [...loaded, ...samples], [loaded, samples]);
   const series = all.find((s) => s.id === activeId) ?? null;
   const isImageSeries = !!series && (!series.specialType || series.specialType === "image") && series.slices.length > 0;
+  // DICOM SR kanıt listesi: anahtar kesitlerin SOP Instance UID'leri (yalnızca gerçek DICOM serilerinde)
+  const srEvidence = useMemo(() => {
+    if (!series?.sopUids || !series.sopClassUid || !series.seriesUid) return null;
+    const uids = keyImages.map((k) => series.sopUids![k.slice]).filter(Boolean);
+    return uids.length ? { seriesUid: series.seriesUid, sopClassUid: series.sopClassUid, sopUids: uids } : null;
+  }, [series, keyImages]);
+  const fusion = useMemo(() => {
+    if (!fusionCfg || !series || !isImageSeries) return null;
+    const o = all.find((x) => x.id === fusionCfg.seriesId);
+    return o && o.id !== series.id ? { ...fusionCfg, series: o } : null;
+  }, [fusionCfg, all, series, isImageSeries]);
   const pxMm = series ? (pxOverride[series.id] ?? series.pixelSpacing) : 1;
+  const noduleMeasurements = useMemo(() => {
+    if (!series) return [];
+    return annotations.flatMap((a) => {
+      const p = a.points;
+      if (a.kind === "length" && p.length >= 2) return [{ label: "Uzunluk", mm: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) * pxMm, slice: a.slice }];
+      if ((a.kind === "ellipse" || a.kind === "ellipsoid") && p.length >= 2) return [{ label: a.kind === "ellipse" ? "Elips" : "Elipsoid", mm: ((Math.abs(p[1].x - p[0].x) + Math.abs(p[1].y - p[0].y)) / 2) * pxMm, slice: a.slice }];
+      return [];
+    });
+  }, [annotations, series, pxMm]);
   const resolved = series ? resolveProtocol(series, protocol) : "none";
   const reportStatus: "taslak" | "onaylandi" = activeReport && series && activeReport.studyUid === series.studyUid ? activeReport.status : "taslak";
 
@@ -776,7 +805,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
 
   const measurementsText = useMemo(() => {
     const unit = series?.unit ?? "SI";
-    return [...annotations].filter((a) => a.kind !== "arrow").sort((a, b) => a.slice - b.slice).map((a) => `Kesit ${a.slice + 1} · ${KIND_LABEL[a.kind]}: ${annotationSummary(a, pxMm, unit)}`).join("\n");
+    return [...annotations].filter((a) => a.kind !== "arrow").sort((a, b) => a.slice - b.slice).map((a) => `Kesit ${a.slice + 1} · ${KIND_LABEL[a.kind]}: ${annotationSummary(a, pxMm, unit, series?.suv?.factor)}`).join("\n");
   }, [annotations, pxMm, series]);
 
   const buildReport = (r: AnalysisResult | null): ReportData => {
@@ -938,6 +967,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
         <div className="mx-1 h-6 w-px shrink-0 bg-[#1e2735]" />
         <Btn onClick={exportPng} title="Geçerli kesiti PNG kaydet">PNG</Btn>
         <Btn onClick={exportAnon} title="Anonimleştirilmiş DICOM (ZIP)">Anonim DICOM</Btn>
+        <Btn onClick={() => { if (!series || !isImageSeries) { toast("Önce bir görüntü serisi açın."); return; } setNoduleOpen(true); }} title="Nodül takibi: zaman serisi, Lung-RADS özeti, hacim ikilenme süresi">Nodül takibi</Btn>
+        <ExportMenu series={isImageSeries ? series : null} wl={wl} ww={ww} invert={invert} slice={slice} keyImages={keyImages} toast={toast} />
         <Btn onClick={() => void toggleFullscreen()} title="Tam ekran">⛶</Btn>
         <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
           <span className="rounded border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-[9px] font-bold tracking-wide text-amber-300">KLİNİK KARAR İÇİN KULLANILAMAZ</span>
@@ -981,6 +1012,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
         </select>
         <Btn onClick={savePreset}>＋ Ön ayar</Btn>
         <div className="mx-1 h-5 w-px shrink-0 bg-[#1e2735]" />
+        <FusionControl all={all} primary={isImageSeries ? series : null} cfg={fusionCfg} onChange={setFusionCfg} />
+        <Btn on={refLinesOn} tone="violet" onClick={() => { setRefLinesOn((v) => { setRefLines(!v); return !v; }); }} title="Çapraz referans çizgileri: diğer panellerin kesit düzlemlerini bu görüntüde çizgi olarak göster">Ref. çizgi</Btn>
         <Btn tone="amber" onClick={captureKey} title="Anahtar kesit ekle (K)">★ Anahtar kesit{keyImages.length ? ` (${keyImages.length})` : ""}</Btn>
         {pxOverride[series?.id ?? ""] && <span className="shrink-0 rounded border border-emerald-400/30 px-1.5 py-0.5 text-[10px] text-emerald-300">kalibre</span>}
       </div>
@@ -1031,12 +1064,12 @@ export default function Workstation({ user }: { user: UserInfo }) {
                   series={series} slice={slice} wl={wl} ww={ww} invert={invert} zoom={zoom} pan={pan} tool={tool} rotation={rotation} flipH={flipH} flipV={flipV} pxMm={pxMm}
                   scan={scan} findings={liveFindings} revealedIds={revealed} activeFindingId={activeFinding} overlay={overlay} showDicomOverlays={showOverlays} annotations={annotations}
                   onSlice={setSlice} onWL={(a, b) => { setWl(a); setWw(b); }} onZoom={setZoom} onPan={setPan}
-                  onAddAnnotation={addAnnotation} onCalibrate={calibrate} onHover={setHoverVal}
+                  onAddAnnotation={addAnnotation} onCalibrate={calibrate} onHover={setHoverVal} panelId="main" fusion={fusion}
                 />
                 {series && (
                   <>
                     <div className="pointer-events-none absolute left-3 top-2 font-mono text-[10.5px] leading-relaxed text-cyan-200/80"><div className="font-bold text-white">{series.patientName}</div><div>{series.modality} · {series.description}</div><div className="text-slate-400">ID: {series.patientId}</div></div>
-                    <div className="pointer-events-none absolute right-3 top-2 text-right font-mono text-[10.5px] leading-relaxed text-cyan-200/80"><div className="font-bold text-cyan-300">Kesit {slice + 1}/{series.slices.length}{series.sliceThickness ? ` · ${series.sliceThickness} mm` : ""}</div><div>Zoom %{Math.round(zoom * 100)}</div>{hoverVal !== null && <div className="font-bold text-emerald-300">{hoverVal.toFixed(0)} {series.unit}</div>}</div>
+                    <div className="pointer-events-none absolute right-3 top-2 text-right font-mono text-[10.5px] leading-relaxed text-cyan-200/80"><div className="font-bold text-cyan-300">Kesit {slice + 1}/{series.slices.length}{series.sliceThickness ? ` · ${series.sliceThickness} mm` : ""}</div><div>Zoom %{Math.round(zoom * 100)}</div>{hoverVal !== null && <div className="font-bold text-emerald-300">{hoverVal.toFixed(0)} {series.unit}{series.suv?.factor ? ` · SUV ${(hoverVal * series.suv.factor).toFixed(2)}` : ""}</div>}{series.suv && !series.suv.factor && <div className="text-amber-300" title={series.suv.note}>SUV yok: {series.suv.note}</div>}</div>
                     <div className="pointer-events-none absolute bottom-2 left-3 font-mono text-[10.5px] text-cyan-200/80">{series.isColor ? "True Color (RGB)" : `WL ${Math.round(wl)} · WW ${Math.round(ww)}`}{invert ? " · TERS" : ""} · {pxMm.toFixed(3)} mm/px</div>
                   </>
                 )}
@@ -1046,7 +1079,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
                 <div key={i} className="min-h-0 min-w-0 bg-[#07090c]">
                   <RefPanel
                     allSeries={all} seriesId={refIds[i]} onSeriesChange={(id) => setRefIds((r) => r.map((x, k) => (k === i ? id : x)))}
-                    primary={series} primarySlice={slice} syncSlice={syncPanels} windowOverride={refWins[i]} tool={tool} invert={invert}
+                    primary={series} primarySlice={slice} syncSlice={syncPanels} panelId={`ref${i + 1}`} windowOverride={refWins[i]} tool={tool} invert={invert}
                     rotation={rotation} flipH={flipH} flipV={flipV} onPrimarySlice={(n) => series && setSlice(Math.max(0, Math.min(series.slices.length - 1, n)))} label={refLabel[i]}
                   />
                 </div>
@@ -1086,9 +1119,10 @@ export default function Workstation({ user }: { user: UserInfo }) {
         <span className="ml-auto hidden text-amber-300/80 lg:inline">DEMO / ARAŞTIRMA — kural tabanlı aday bulgular klinik olarak doğrulanmamıştır</span>
       </footer>
 
-      {activeReport && <ReportPrintModal open={reportOpen} onClose={() => setReportOpen(false)} report={activeReport} user={user} onSave={saveReport} onGotoSlice={(n) => setSlice(Math.max(0, n - 1))} />}
+      {activeReport && <ReportPrintModal open={reportOpen} onClose={() => setReportOpen(false)} report={activeReport} user={user} onSave={saveReport} onGotoSlice={(n) => setSlice(Math.max(0, n - 1))} srEvidence={srEvidence} />}
       <WorklistModal open={worklistOpen} onClose={() => setWorklistOpen(false)} user={user} onOpenStudy={(s) => void openStored(s)} onOpenPacs={(s) => void openPacs(s)} />
       {mpr && series && <div className="fixed inset-0 z-50 bg-[#070a0f]"><ViewerErrorBoundary resetKey={series.id} label="MPR" onClose={() => setMpr(false)}><VolumeView series={series} wl={wl} ww={ww} invert={invert} onClose={() => setMpr(false)} /></ViewerErrorBoundary></div>}
+      {noduleOpen && series && <NoduleTracker patientId={series.patientId} patientName={series.patientName} studyDate={series.studyDate} measurements={noduleMeasurements} onClose={() => setNoduleOpen(false)} />}
       {pngImage && <ExportImageDialog image={pngImage} onClose={closePng} />}
       {importReport && <ImportReportDialog report={importReport} onClose={closeImportReport} />}
       {hangingModalOpen && <HangingProtocolEditorModal

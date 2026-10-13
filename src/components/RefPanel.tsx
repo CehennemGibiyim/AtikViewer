@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Viewport from "./Viewport";
 import ViewerErrorBoundary from "./ViewerErrorBoundary";
 import { mapSliceByPosition } from "@/lib/geometry";
+import { parallelSeries } from "@/lib/planes";
 import type { SeriesData, ToolName } from "@/lib/types";
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
   flipV: boolean;
   onPrimarySlice: (i: number) => void;
   label: string;
+  panelId?: string;
 }
 
 export default function RefPanel(p: Props) {
@@ -41,7 +43,7 @@ export default function RefPanel(p: Props) {
     setPan({ x: 0, y: 0 });
   }, [series, p.windowOverride?.wl, p.windowOverride?.ww]);
 
-  const synced = p.syncSlice && !!p.primary && !!series;
+  const synced = p.syncSlice && !!p.primary && !!series && parallelSeries(p.primary, series);
   const mapped = series && synced ? mapSliceByPosition(p.primary!, p.primarySlice, series) : local;
   const slice = series ? Math.max(0, Math.min(mapped, series.slices.length - 1)) : 0;
   const tool: ToolName = ["wl", "pan", "zoom"].includes(p.tool) ? p.tool : "wl";
@@ -51,7 +53,7 @@ export default function RefPanel(p: Props) {
       <ViewerErrorBoundary resetKey={series?.id ?? "empty"} label={p.label}>
         <Viewport
           series={series} slice={slice} wl={wl} ww={ww} invert={p.invert} zoom={zoom} pan={pan} tool={tool}
-          rotation={p.rotation} flipH={p.flipH} flipV={p.flipV} pxMm={series?.pixelSpacing ?? 1} readOnly
+          rotation={p.rotation} flipH={p.flipH} flipV={p.flipV} pxMm={series?.pixelSpacing ?? 1} readOnly panelId={p.panelId}
           label={series ? `${p.label}${synced ? " · senkron" : ""} · Kesit ${slice + 1}/${series.slices.length}` : p.label}
           onSlice={(s) => {
             if (s === slice) return;

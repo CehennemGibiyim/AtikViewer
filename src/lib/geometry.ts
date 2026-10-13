@@ -103,13 +103,45 @@ export function mapSliceByPosition(a: SeriesData, ia: number, b: SeriesData): nu
 const f1 = (n: number) => n.toFixed(1);
 
 /** Ölçüm etiketi (görüntüde ve listede). */
-export function annotationSummary(a: Annotation, pxMm: number, unit: string): string {
+/** Bir noktanın (p) p0→p1 doğrusuna dik uzaklığı ve tarafı (ekranda yönün sağı/solu), piksel cinsinden. */
+export function perpendicular(p0: Pt, p1: Pt, p: Pt): { dist: number; foot: Pt; side: "sağ" | "sol" } {
+  const dx = p1.x - p0.x, dy = p1.y - p0.y;
+  const len2 = dx * dx + dy * dy || 1;
+  const t = ((p.x - p0.x) * dx + (p.y - p0.y) * dy) / len2;
+  const foot = { x: p0.x + t * dx, y: p0.y + t * dy };
+  const cr = dx * (p.y - p0.y) - dy * (p.x - p0.x);
+  return { dist: Math.hypot(p.x - foot.x, p.y - foot.y), foot, side: cr > 0 ? "sağ" : "sol" };
+}
+
+/** Elipsoid hacmi (mL): V = π/6 · d1 · d2 · d3 (mm³ → mL). */
+export const ellipsoidVolumeMl = (d1Mm: number, d2Mm: number, d3Mm: number) => (Math.PI / 6) * d1Mm * d2Mm * d3Mm / 1000;
+
+/** Üçüncü eksen çapı (mm); annotation.text içinde saklanır, yoksa diğer ikisinin ortalaması. */
+export function ellipsoidD3(a: Annotation, d1: number, d2: number): number {
+  const v = parseFloat(a.text ?? "");
+  return Number.isFinite(v) && v > 0 ? v : (d1 + d2) / 2;
+}
+
+export function annotationSummary(a: Annotation, pxMm: number, unit: string, suvFactor?: number | null): string {
   const p = a.points;
   switch (a.kind) {
     case "length": return `${f1(dist(p[0], p[1]) * pxMm)} mm`;
     case "angle": return `${f1(angleAt(p[0], p[1], p[2]))}°`;
     case "cobb": return `Cobb ${f1(lineAngle(p[0], p[1], p[2], p[3]))}°`;
     case "arrow": return a.text || "ok";
+    case "deviation": {
+      if (p.length < 3) return "";
+      const d = perpendicular(p[0], p[1], p[2]);
+      return `Sapma ${f1(d.dist * pxMm)} mm (${d.side})`;
+    }
+    case "ellipsoid": {
+      const d1 = Math.abs(p[1].x - p[0].x) * pxMm, d2 = Math.abs(p[1].y - p[0].y) * pxMm;
+      const d3 = ellipsoidD3(a, d1, d2);
+      const vol = ellipsoidVolumeMl(d1, d2, d3);
+      const st0 = a.stats;
+      const suv = st0 && suvFactor ? ` · SUVort ${(st0.mean * suvFactor).toFixed(2)} · SUVmaks ${(st0.max * suvFactor).toFixed(2)}` : "";
+      return `⌀ ${f1(d1)}×${f1(d2)}×${f1(d3)} mm · V ${vol < 10 ? vol.toFixed(2) : vol.toFixed(1)} mL${suv}`;
+    }
     case "rect":
     case "ellipse":
     case "polygon": {
@@ -123,12 +155,13 @@ export function annotationSummary(a: Annotation, pxMm: number, unit: string): st
         per = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
       } else { area = polygonArea(p); per = polygonPerimeter(p); }
       const u = unit === "HU" ? " HU" : "";
-      return `A ${f1(area * pxMm * pxMm)} mm² · ç ${f1(per * pxMm)} mm${st ? ` · ort ${st.mean.toFixed(0)}±${st.std.toFixed(0)}${u} · min/maks ${st.min.toFixed(0)}/${st.max.toFixed(0)}` : ""}`;
+      const suv = st && suvFactor ? ` · SUVort ${(st.mean * suvFactor).toFixed(2)} · SUVmaks ${(st.max * suvFactor).toFixed(2)}` : "";
+      return `A ${f1(area * pxMm * pxMm)} mm² · ç ${f1(per * pxMm)} mm${st ? ` · ort ${st.mean.toFixed(0)}±${st.std.toFixed(0)}${u} · min/maks ${st.min.toFixed(0)}/${st.max.toFixed(0)}${suv}` : ""}`;
     }
     default: return "";
   }
 }
 
 export const KIND_LABEL: Record<Annotation["kind"], string> = {
-  length: "Uzunluk", angle: "Açı", cobb: "Cobb açısı", arrow: "Ok", rect: "Dikdörtgen ROI", ellipse: "Elips ROI", polygon: "Çokgen ROI", calib: "Kalibrasyon",
+  length: "Uzunluk", angle: "Açı", cobb: "Cobb açısı", arrow: "Ok", rect: "Dikdörtgen ROI", ellipse: "Elips ROI", polygon: "Çokgen ROI", calib: "Kalibrasyon", ellipsoid: "Elipsoid hacim", deviation: "Sapma",
 };

@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Annotation, Finding, SeriesData, ToolName } from "@/lib/types";
-import { angleAt, annotationSummary, dist, ellipseTest, lineAngle, pointInPolygon, regionStats, type Pt } from "@/lib/geometry";
+import { annotationSummary, dist, ellipseTest, pointInPolygon, perpendicular, regionStats, type Pt } from "@/lib/geometry";
+import { buildFusionLayer, type FusionParams } from "@/lib/fusion";
+import { refLinesFor, registerPanel, unregisterPanel, usePanelRegistry } from "@/lib/panelRegistry";
 import { fmtConfShort } from "@/lib/format";
 
 const SEV_COLOR: Record<string, string> = { kritik: "#ff3b5c", yuksek: "#ff9f1c", orta: "#ffd60a", dusuk: "#4cc9f0", normal: "#2ee6a8" };
@@ -23,8 +25,8 @@ export interface OverlayData {
 
 type Rot = 0 | 90 | 180 | 270;
 type Draft = { mode: "drag"; tool: ToolName; a: Pt; b: Pt } | { mode: "multi"; tool: ToolName; pts: Pt[]; cursor: Pt } | null;
-const DRAG_TOOLS: ToolName[] = ["length", "rect", "ellipse", "arrow", "calib"];
-const MULTI_NEED: Partial<Record<ToolName, number>> = { angle: 3, cobb: 4 };
+const DRAG_TOOLS: ToolName[] = ["length", "rect", "ellipse", "ellipsoid", "arrow", "calib"];
+const MULTI_NEED: Partial<Record<ToolName, number>> = { angle: 3, cobb: 4, deviation: 3 };
 
 interface ViewportProps {
   series: SeriesData | null;
@@ -48,6 +50,10 @@ interface ViewportProps {
   annotations?: Annotation[];
   readOnly?: boolean;
   label?: string;
+  /** Çapraz referans çizgileri için panel kimliği (aynı çerçevedeki diğer panellerin düzlemleri çizilir). */
+  panelId?: string;
+  /** PET-BT vb. füzyon katmanı (bu seri üzerine bindirilir). */
+  fusion?: FusionParams | null;
   onSlice: (s: number) => void;
   onWL: (wl: number, ww: number) => void;
   onZoom: (z: number) => void;
@@ -65,7 +71,7 @@ export default function Viewport(props: ViewportProps) {
   const {
     series, slice: requestedSlice, wl, ww, invert, zoom, pan, tool, rotation, flipH, flipV, pxMm, scan = null,
     findings = EMPTY_FINDINGS, revealedIds = EMPTY_SET, activeFindingId = null, overlay = null,
-    showDicomOverlays = true, annotations = EMPTY_ANN, readOnly = false, label,
+    showDicomOverlays = true, annotations = EMPTY_ANN, readOnly = false, label, panelId, fusion = null,
     onSlice, onWL, onZoom, onPan, onAddAnnotation, onCalibrate, onHover,
   } = props;
 
@@ -78,6 +84,16 @@ export default function Viewport(props: ViewportProps) {
   const [draft, setDraft] = useState<Draft>(null);
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [renderTick, setTick] = useState(0);
+  const fusRef = useRef<{ key: string; canvas: HTMLCanvasElement | null }>({ key: "", canvas: null });
+  const registryVersion = usePanelRegistry();
+  const suvFactor = series?.suv?.factor ?? null;
+
+  // Bu panelin hangi seri/kesiti gösterdiğini kayda geçir (diğer panellerin referans çizgileri için)
+  useEffect(() => {
+    if (!panelId) return;
+    registerPanel({ id: panelId, series, slice, label: series ? `${series.description} · K${slice + 1}` : panelId });
+    return () => unregisterPanel(panelId);
+  }, [panelId, series, slice]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -205,6 +221,27 @@ export default function Viewport(props: ViewportProps) {
       }
     }
 
+    // 1b. Füzyon katmanı (ör. PET → BT): hasta koordinatlarına göre yeniden örneklenir
+    let fusCanvas: HTMLCanvasElement | null = null;
+    let fusNote = "";
+    if (fusion && !series.isColor) {
+      const fkey = `${series.id}|${slice}|${fusion.series.id}|${fusion.alpha}|${fusion.cmap}|${fusion.loPct}|${fusion.hiPct}`;
+      if (fusRef.current.key !== fkey) {
+        const layer = buildFusionLayer(series, slice, fusion);
+        if (layer) {
+          const c = fusRef.current.canvas ?? document.createElement("canvas");
+          c.width = W; c.height = H;
+          const fctx = c.getContext("2d")!;
+          const img = fctx.createImageData(W, H);
+          new Uint32Array(img.data.buffer).set(layer);
+          fctx.putImageData(img, 0, 0);
+          fusRef.current = { key: fkey, canvas: c };
+        } else fusRef.current = { key: fkey, canvas: null };
+      }
+      fusCanvas = fusRef.current.canvas;
+      fusNote = fusCanvas ? `FÜZYON · ${fusion.series.modality} ${fusion.series.description} · %${Math.round(fusion.alpha * 100)}` : "Füzyon: konum bilgisi (IPP/IOP/FrameOfReference) uyuşmuyor";
+    }
+
     const { scale, ox, oy, dispW, dispH } = getTransform();
     const drawLayer = (cv: HTMLCanvasElement) => {
       ctx.save();
@@ -219,6 +256,7 @@ export default function Viewport(props: ViewportProps) {
     };
 
     drawLayer(baseRef.current.canvas!);
+    if (fusCanvas) drawLayer(fusCanvas);
     if (ovCanvas) drawLayer(ovCanvas);
 
     const toC = (p: Pt) => {
@@ -330,18 +368,26 @@ export default function Viewport(props: ViewportProps) {
 
     const drawAnn = (a: { kind: Annotation["kind"]; points: Pt[]; text?: string; stats?: Annotation["stats"] }, temp: boolean) => {
       const P = a.points.map(toC);
-      const color = a.kind === "length" || a.kind === "calib" ? "#ffd60a" : a.kind === "angle" || a.kind === "cobb" ? "#ff66c4" : a.kind === "arrow" ? "#7dd3fc" : "#b388ff";
+      const color = a.kind === "length" || a.kind === "calib" ? "#ffd60a" : a.kind === "angle" || a.kind === "cobb" ? "#ff66c4" : a.kind === "arrow" ? "#7dd3fc" : a.kind === "deviation" ? "#fb923c" : a.kind === "ellipsoid" ? "#34d399" : "#b388ff";
       ctx.strokeStyle = color; ctx.fillStyle = color;
       ctx.setLineDash(temp || a.kind === "calib" ? [5, 3] : []);
       ctx.beginPath();
       if (a.kind === "length" || a.kind === "calib" || a.kind === "arrow") { ctx.moveTo(P[0].x, P[0].y); if (P[1]) ctx.lineTo(P[1].x, P[1].y); }
+      else if (a.kind === "deviation") {
+        ctx.moveTo(P[0].x, P[0].y); if (P[1]) ctx.lineTo(P[1].x, P[1].y);
+        if (P[2] && a.points[1]) {
+          const d = perpendicular(a.points[0], a.points[1], a.points[2]);
+          const F = toC(d.foot);
+          ctx.stroke(); ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(P[2].x, P[2].y); ctx.lineTo(F.x, F.y);
+        }
+      }
       else if (a.kind === "angle") { ctx.moveTo(P[0].x, P[0].y); if (P[1]) ctx.lineTo(P[1].x, P[1].y); if (P[2]) ctx.lineTo(P[2].x, P[2].y); }
       else if (a.kind === "cobb") { ctx.moveTo(P[0].x, P[0].y); if (P[1]) ctx.lineTo(P[1].x, P[1].y); if (P[2]) { ctx.moveTo(P[2].x, P[2].y); if (P[3]) ctx.lineTo(P[3].x, P[3].y); } }
       else if (a.kind === "rect" && P[1]) {
         const c1 = toC({ x: a.points[0].x, y: a.points[0].y }), c2 = toC({ x: a.points[1].x, y: a.points[1].y });
         const q = [c1, toC({ x: a.points[1].x, y: a.points[0].y }), c2, toC({ x: a.points[0].x, y: a.points[1].y })];
         ctx.moveTo(q[0].x, q[0].y); q.slice(1).forEach((s) => ctx.lineTo(s.x, s.y)); ctx.closePath();
-      } else if (a.kind === "ellipse" && P[1]) {
+      } else if ((a.kind === "ellipse" || a.kind === "ellipsoid") && P[1]) {
         const cx = (a.points[0].x + a.points[1].x) / 2, cy = (a.points[0].y + a.points[1].y) / 2;
         const rx = Math.abs(a.points[1].x - a.points[0].x) / 2, ry = Math.abs(a.points[1].y - a.points[0].y) / 2;
         for (let t = 0; t <= 48; t++) {
@@ -354,7 +400,7 @@ export default function Viewport(props: ViewportProps) {
       }
       ctx.stroke();
       ctx.setLineDash([]);
-      if (a.kind !== "rect" && a.kind !== "ellipse") P.forEach(dot);
+      if (a.kind !== "rect" && a.kind !== "ellipse" && a.kind !== "ellipsoid") P.forEach(dot);
       if (a.kind === "arrow" && P[1]) {
         const ang = Math.atan2(P[1].y - P[0].y, P[1].x - P[0].x);
         ctx.beginPath(); ctx.moveTo(P[1].x, P[1].y);
@@ -364,8 +410,8 @@ export default function Viewport(props: ViewportProps) {
       }
       if (!temp) {
         const full = a as Annotation;
-        const anchor = a.kind === "angle" ? P[1] : a.kind === "arrow" ? P[1] : a.kind === "length" ? { x: (P[0].x + P[1].x) / 2, y: (P[0].y + P[1].y) / 2 } : P[P.length - 1];
-        const s = annotationSummary(full, pxMm, series.unit);
+        const anchor = a.kind === "angle" ? P[1] : a.kind === "deviation" ? P[2] : a.kind === "arrow" ? P[1] : a.kind === "length" ? { x: (P[0].x + P[1].x) / 2, y: (P[0].y + P[1].y) / 2 } : P[P.length - 1];
+        const s = annotationSummary(full, pxMm, series.unit, suvFactor);
         if (s && anchor) text(s, anchor);
       }
     };
@@ -374,6 +420,23 @@ export default function Viewport(props: ViewportProps) {
     if (draft?.mode === "drag") drawAnn({ kind: draft.tool as Annotation["kind"], points: [draft.a, draft.b] }, true);
     if (draft?.mode === "multi") drawAnn({ kind: draft.tool as Annotation["kind"], points: [...draft.pts, draft.cursor] }, true);
     ctx.restore();
+
+    // 6b. Çapraz referans çizgileri (diğer panellerin kesit düzlemleri)
+    if (panelId) {
+      for (const rl of refLinesFor(panelId, series, slice)) {
+        const a = toC(rl.a), b = toC(rl.b);
+        ctx.save();
+        ctx.strokeStyle = rl.color; ctx.fillStyle = rl.color; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.9; ctx.setLineDash([8, 5]);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = "600 10px ui-monospace, monospace";
+        ctx.fillText(rl.label.slice(0, 28), Math.max(4, Math.min(size.w - 120, a.x + 6)), Math.max(12, Math.min(size.h - 6, a.y - 4)));
+        ctx.restore();
+      }
+    }
+    if (fusNote) {
+      ctx.save(); ctx.font = "700 10.5px ui-monospace, monospace"; ctx.fillStyle = fusCanvas ? "#fbbf24" : "#f87171";
+      ctx.fillText(fusNote, 10, size.h - 26); ctx.restore();
+    }
 
     // 7. AI Tarama Çizgisi
     if (scan?.active) {
@@ -388,7 +451,7 @@ export default function Viewport(props: ViewportProps) {
       ctx.beginPath(); ctx.moveTo(ox, lineY); ctx.lineTo(ox + dispW * scale, lineY); ctx.stroke();
       ctx.restore();
     }
-  }, [series, slice, wl, ww, invert, size, getTransform, imgToDisp, findings, revealedIds, activeFindingId, overlay, showDicomOverlays, annotations, draft, scan, rotation, flipH, flipV, pxMm, renderTick]);
+  }, [series, slice, wl, ww, invert, size, getTransform, imgToDisp, fusion, panelId, registryVersion, suvFactor, findings, revealedIds, activeFindingId, overlay, showDicomOverlays, annotations, draft, scan, rotation, flipH, flipV, pxMm, renderTick]);
 
   // Nabız animasyonu
   const animate = !!scan?.active || (!!series && findings.some((f) => f.bbox && revealedIds.has(f.id) && slice >= f.sliceStart && slice <= f.sliceEnd));
@@ -431,7 +494,7 @@ export default function Viewport(props: ViewportProps) {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return { cx: e.clientX - r.left, cy: e.clientY - r.top };
   };
-  const annTool = !readOnly && (DRAG_TOOLS.includes(tool) || tool === "angle" || tool === "cobb" || tool === "polygon");
+  const annTool = !readOnly && (DRAG_TOOLS.includes(tool) || tool === "angle" || tool === "cobb" || tool === "deviation" || tool === "polygon");
 
   const onDown = (e: React.PointerEvent) => {
     if (!series) return;
@@ -446,8 +509,7 @@ export default function Viewport(props: ViewportProps) {
         if (tool === "polygon" && prev.length >= 3 && dist(toScreen(prev[0]), { x: cx, y: cy }) < 9) { finishPolygon(prev); return; }
         const pts = [...prev, p];
         if (need && pts.length === need) {
-          if (tool === "angle") onAddAnnotation?.({ kind: "angle", slice, points: pts });
-          else onAddAnnotation?.({ kind: "cobb", slice, points: pts });
+          onAddAnnotation?.({ kind: tool as "angle" | "cobb" | "deviation", slice, points: pts });
           setDraft(null);
         } else setDraft({ mode: "multi", tool, pts, cursor: p });
       }
@@ -491,6 +553,14 @@ export default function Viewport(props: ViewportProps) {
     else if (t === "rect") {
       const st = regionStats(series, slice, { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) }, () => true);
       if (st) onAddAnnotation?.({ kind: "rect", slice, points: [a, b], stats: st });
+    } else if (t === "ellipsoid") {
+      const cxx = (a.x + b.x) / 2, cyy = (a.y + b.y) / 2;
+      const st = regionStats(series, slice, { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) }, ellipseTest(cxx, cyy, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2));
+      const d1 = Math.abs(b.x - a.x) * pxMm, d2 = Math.abs(b.y - a.y) * pxMm;
+      const def = ((d1 + d2) / 2).toFixed(1);
+      const ans = window.prompt(`Elipsoid hacmi: 3. eksen çapı (mm) — örn. kraniokaudal ölçü.\nBoş bırakılırsa ortalama (${def} mm) kullanılır.`, def);
+      const d3 = parseFloat((ans ?? "").replace(",", "."));
+      onAddAnnotation?.({ kind: "ellipsoid", slice, points: [a, b], text: Number.isFinite(d3) && d3 > 0 ? String(d3) : def, stats: st ?? undefined });
     } else if (t === "ellipse") {
       const cxx = (a.x + b.x) / 2, cyy = (a.y + b.y) / 2;
       const st = regionStats(series, slice, { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) }, ellipseTest(cxx, cyy, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2));
@@ -531,7 +601,7 @@ export default function Viewport(props: ViewportProps) {
       )}
       {draft?.mode === "multi" && (
         <div className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 rounded bg-black/70 px-3 py-1 text-[11px] text-slate-200">
-          {draft.tool === "polygon" ? "Çokgen: noktalara tıklayın · çift tık/Enter: bitir · Esc: iptal" : `${draft.pts.length}/${MULTI_NEED[draft.tool]} nokta · Esc: iptal`}
+          {draft.tool === "polygon" ? "Çokgen: noktalara tıklayın · çift tık/Enter: bitir · Esc: iptal" : draft.tool === "deviation" ? `Sapma: ${["1. referans noktası", "2. referans noktası", "ölçülecek nokta"][draft.pts.length] ?? ""} · Esc: iptal` : `${draft.pts.length}/${MULTI_NEED[draft.tool]} nokta · Esc: iptal`}
         </div>
       )}
     </div>

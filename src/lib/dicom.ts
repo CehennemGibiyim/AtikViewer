@@ -2,6 +2,8 @@ import { parseDicom, type DicomDataSet } from "dicom-parser";
 import { inflateSync, unzipSync } from "fflate";
 import { assertNotAborted, withImportTimeout } from "./importOperation";
 import type { DicomOverlayPlane, DicomTag, PaletteColorLUT, Pixels, SeriesData } from "./types";
+import { suvFromDataset, parseTm } from "./suv";
+import { applyCharset } from "./dicomCharset";
 import { codecName, decodeEncapsulatedFrames, isCodecSupported, type RawFrame } from "./codecs";
 import {
   isSOPClass,
@@ -55,6 +57,9 @@ interface ParsedSlice {
   photometric: string;
   isColor: boolean;
   overlays?: DicomOverlayPlane[];
+  ipp?: number[];
+  sopUid?: string;
+  seriesTimeS?: number | null;
   file: File;
 }
 
@@ -282,6 +287,12 @@ function sliceKey(ds: DicomDataSet): number | null {
   return p[0] * nx + p[1] * ny + p[2] * nz;
 }
 
+function parseVec3(s: string | undefined): number[] | undefined {
+  if (!s) return undefined;
+  const p = s.split("\\").map(Number);
+  return p.length >= 3 && !p.slice(0, 3).some(Number.isNaN) ? p.slice(0, 3) : undefined;
+}
+
 function collectTags(ds: DicomDataSet): DicomTag[] {
   const tags: DicomTag[] = [];
   for (const key of Object.keys(ds.elements).sort()) {
@@ -314,14 +325,14 @@ function inflater(byteArray: Uint8Array, position: number): Uint8Array {
 
 function tryParse(buf: Uint8Array): DicomDataSet | null {
   try {
-    return parseDicom(buf, { inflater });
+    return applyCharset(parseDicom(buf, { inflater }));
   } catch {
     /* başlıksız dosya olabilir */
   }
   if (buf.length < 512) return null;
   for (const ts of ["1.2.840.10008.1.2.1", "1.2.840.10008.1.2"]) {
     try {
-      const ds = parseDicom(buf, { TransferSyntaxUID: ts });
+      const ds = applyCharset(parseDicom(buf, { TransferSyntaxUID: ts }));
       if (ds.elements["x7fe00010"] && ds.uint16("x00280010") && ds.uint16("x00280011")) return ds;
     } catch {
       /* sıradaki */
@@ -591,6 +602,9 @@ export async function loadMedicalFiles(
           photometric,
           isColor: dec!.isColor,
           overlays: overlays.length > 0 ? overlays : undefined,
+          ipp: dec.frames.length > 1 ? undefined : parseVec3(ds.string("x00200032")),
+          sopUid: dec.frames.length > 1 ? undefined : ds.string("x00080018")?.trim(),
+          seriesTimeS: parseTm(ds.string("x00080031") || ds.string("x00080032")),
           file,
         })
       );
@@ -650,6 +664,7 @@ export async function loadMedicalFiles(
     const ww = first.floatString("x00281051");
     const spacingStr = first.string("x00280030");
     const pixelSpacing = spacingStr ? parseFloat(spacingStr.split("\\")[0]) || 1 : 1;
+    const pixelSpacingX = spacingStr && spacingStr.includes("\\") ? parseFloat(spacingStr.split("\\")[1]) || pixelSpacing : pixelSpacing;
 
     // MONOCHROME1 → MONOCHROME2
     let invK: number | null = null;
@@ -702,11 +717,16 @@ export async function loadMedicalFiles(
       sliceThickness: thickness,
       sliceSpacing: spacing,
       slicePositions: positions,
+      ipp: list.every((s) => s.ipp) ? list.map((s) => s.ipp!) : undefined,
+      sopUids: list.every((s) => s.sopUid) ? list.map((s) => s.sopUid!) : undefined,
+      sopClassUid: first.string("x00080016")?.trim(),
+      pixelSpacingX,
+      suv: modality === "PT" ? suvFromDataset(first, list.map((s) => s.seriesTimeS ?? null).sort((a, b) => (a ?? 1e12) - (b ?? 1e12))) : undefined,
       orientation: iop && iop.length >= 6 && !iop.some(Number.isNaN) ? iop.slice(0, 6) : undefined,
       frameOfRef: first.string("x00200052"),
       defaultWL,
       defaultWW,
-      unit: isColor ? "RGB" : modality === "CT" ? "HU" : "SI",
+      unit: isColor ? "RGB" : modality === "CT" ? "HU" : modality === "PT" ? (first.string("x00541001")?.trim() || "SI") : "SI",
       photometric: list[0].photometric,
       isColor,
       rgbaSlices,

@@ -1,5 +1,6 @@
 "use client";
 
+import { buildReportSr, type EvidenceRef } from "@/lib/dicomSr";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtConf } from "@/lib/format";
 import type {
@@ -53,6 +54,8 @@ interface Props {
   user: UserInfo;
   onSave: (r: ReportData, action: "save" | "approve") => Promise<SaveResult>;
   onGotoSlice?: (sliceNumber: number) => void;
+  /** Anahtar kesitlerin DICOM başvuruları (SR kanıt listesi); yoksa SR başvurusuz üretilir. */
+  srEvidence?: EvidenceRef | null;
 }
 
 // ───────── Web Speech API (Türkçe dikte) ─────────
@@ -101,7 +104,7 @@ function MicButton({ onText }: { onText: (t: string) => void }) {
 
 const STATUS_TR: Record<FindingApprovalStatus, string> = { onaylandi: "✓ Radyolog onayladı", reddedildi: "✗ Reddedildi", duzenlendi: "✎ Düzenlendi", bekliyor: "Onay bekliyor" };
 
-export default function ReportPrintModal({ open, onClose, report: initial, user, onSave, onGotoSlice }: Props) {
+export default function ReportPrintModal({ open, onClose, report: initial, user, onSave, onGotoSlice, srEvidence = null }: Props) {
   const [report, setReport] = useState<ReportData>(initial);
   const [editing, setEditing] = useState(false);
   const [dialog, setDialog] = useState(false);
@@ -184,6 +187,23 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
       category: "Hekim", severity: "orta", confidence: 0, confidenceKind: "none", source: "manual",
     };
     setReport((r) => ({ ...r, findings: [...r.findings, f], findingsApproval: { ...r.findingsApproval, [f.id]: "onaylandi" }, findingsText: `${r.findingsText}\n\n+ ${label} [Kesit ${slice}] (radyolog eklemesi)` }));
+  };
+
+  /** Raporu DICOM Basic Text SR olarak indirir (onaylıysa "VERIFIED" işaretli; elektronik imza değildir). */
+  const downloadSr = () => {
+    try {
+      const bytes = buildReportSr({
+        patientName: report.patientName, patientId: report.patientId, patientSex: report.patientSex, patientAge: report.patientAge,
+        studyUid: report.studyUid, studyDate: report.studyDate, institution: report.institution, studyModality: report.modality,
+        clinicalInfo: report.clinicalInfo, technique: report.technique, findings: report.findingsText, impression: report.impression, recommendation: report.recommendation,
+        measurements: report.measurementsText, approvedBy: report.approvedBy, doctorTitle: report.doctorTitle, approvedAt: report.approvedAt, evidence: srEvidence,
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/dicom" }));
+      a.download = `rapor-${report.id ?? "taslak"}.sr.dcm`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    } catch (e) { setError(e instanceof Error ? e.message : "DICOM SR oluşturulamadı"); }
   };
 
   /** FHIR dosyasını fetch ile alıp indirir (sunucuda da, statik demoda da çalışır). */
@@ -273,6 +293,7 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                 <button onClick={() => setDialog(true)} className="cursor-pointer rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400">✓ Onayla</button>
               </>
             )}
+            <button type="button" onClick={downloadSr} title="Radyoloji raporu → DICOM Basic Text SR" className="cursor-pointer rounded-lg border border-[#2d3b4e] bg-[#141b24] px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-[#1a2330]">DICOM SR ⬇</button>
             {report.id && <button type="button" onClick={() => void downloadFhir(report.id!)} className="cursor-pointer rounded-lg border border-[#2d3b4e] bg-[#141b24] px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-[#1a2330]">FHIR ⬇</button>}
             <button onClick={printReport} className="cursor-pointer rounded-lg bg-cyan-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400">🖨 Yazdır / PDF</button>
             <button onClick={onClose} className="cursor-pointer rounded-lg border border-[#2d3b4e] bg-[#141b24] p-1.5 text-xs text-slate-400 hover:text-slate-100">✕</button>
