@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #070a0f;
+}
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: #0b0f16; }
+*::-webkit-scrollbar-thumb { background: #243043; border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: #31415a; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #1b2532;
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22d3ee;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+}
+
+details > summary::-webkit-details-marker { display: none; }
+
+/* Yazdırma: yalnızca A4 rapor kâğıdı. Kâğıt, ReportPrintModal.printReport ile body'ye eklenen
+   #print-root içine kopyalanır; uygulamanın geri kalanı yazdırmada gizlenir. */
+@media print {
+  @page { size: A4 portrait; margin: 12mm 15mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
+  body > *:not(#print-root) { display: none !important; }
+  #print-root { display: block !important; position: static !important; width: 100% !important; }
+  #print-root #report-paper {
+    position: static !important; display: block !important; width: 100% !important; max-width: none !important;
+    min-height: 0 !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  }
+  #print-root, #print-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #print-root tr, #print-root img { break-inside: avoid; }
+}
+@media screen { #print-root { display: none; } }

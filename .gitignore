@@ -1,0 +1,34 @@
+# Bağımlılıklar ve derleme çıktıları
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Ortam dosyaları (asla commit'lenmez; .env.example şablon olarak commit'lenir)
+.env
+.env*.local
+!.env.example
+
+# Uygulama verisi: şifreleme anahtarı ve şifreli DICOM deposu
+.data/
+
+# Veritabanı / Drizzle çıktıları
+drizzle/
+*.sqlite
+*.db
+
+# Test ve araç çıktıları
+coverage/
+playwright-report/
+test-results/
+tmp/
+
+# İşletim sistemi ve editör artıkları
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.idea/
+.vscode/*
+!.vscode/extensions.json
