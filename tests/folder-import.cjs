@@ -45,8 +45,13 @@ async function upload(page, dir) {
   await p.locator('aside[aria-label="Seri listesi"] button').first().waitFor();
   const dialog = () => p.getByRole("dialog", { name: /görüntü açılamadı|Yükleme raporu/ });
 
-  // Boş klasörde webkitdirectory 0 dosya verir; Playwright boş dizini setFiles ile veremediği için doğrudan değişiklik olayı tetiklenir.
-  await p.getByLabel("Klasör aç", { exact: true }).evaluate((el) => el.dispatchEvent(new Event("change", { bubbles: true })));
+  // Bu test klasik webkitdirectory yolunu sınar; üst düzey Chromium'da uygulama
+  // showDirectoryPicker çağırdığı için API geçici olarak kaldırılır (gömülü önizleme yolu).
+  await p.evaluate(() => { delete window.showDirectoryPicker; });
+
+  // Boş klasörde webkitdirectory 0 dosya verir; Playwright boş dizini setFiles ile veremediği için
+  // değişiklik olayı doğrudan gizli <input webkitdirectory> üzerine tetiklenir.
+  await p.locator('input[type="file"][webkitdirectory]').evaluate((el) => el.dispatchEvent(new Event("change", { bubbles: true })));
   await dialog().waitFor();
   assert.match(await dialog().innerText(), /boş görünüyor/);
   await p.getByRole("button", { name: "Tamam" }).click();

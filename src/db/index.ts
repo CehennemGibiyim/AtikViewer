@@ -4,7 +4,14 @@ import { Pool } from "pg";
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
+  // Sık karşılaşılan taze kurulum hatası: `.env` yokken derleme/çalışma burada patlar.
+  throw new Error(
+    "DATABASE_URL tanımlı değil — `.env` dosyası oluşturulmalı.\n" +
+      "  Windows (PowerShell): Copy-Item .env.example .env\n" +
+      "  Linux/macOS:          cp .env.example .env\n" +
+      "  Ardından veritabanı şemasını uygulayın: npx drizzle-kit push --config=drizzle.config.ts\n" +
+      "  Ayrıntı: docs/WINDOWS_KURULUM.md veya README.md (Manuel kurulum)"
+  );
 }
 
 const globalForDb = globalThis as typeof globalThis & {

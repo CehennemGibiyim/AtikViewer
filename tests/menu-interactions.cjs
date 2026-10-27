@@ -69,11 +69,27 @@ async function main() {
       assert.equal(await page.getByRole("status", { name: "Dosya yükleme ilerlemesi" }).count(), 0);
     });
 
-    await check("Klasör aç: directory seçici + klasör dosyalarının içe aktarılması", async () => {
+    // Uygulama üst düzey Chromium'da File System Access API'yi (showDirectoryPicker),
+    // gömülü önizleme / Firefox / Safari'de klasik webkitdirectory seçicisini kullanır.
+    // Önce klasik yolu (API'yi geçici kaldırarak) doğrula:
+    await check("Klasör aç — klasik yol: webkitdirectory seçici + klasör içe aktarma", async () => {
+      await page.evaluate(() => { delete window.showDirectoryPicker; });
       const fc = await chooser(page, page, "Klasör aç");
       assert.notEqual(await fc.element().getAttribute("webkitdirectory"), null);
       await fc.setFiles(temp);
       await page.getByTestId("action-feedback").filter({ hasText: /seri açıldı/ }).waitFor();
+    });
+
+    // Sonra modern yolu: seçici sahte bir dizin ağacıyla taklit edilir (alt klasör dolaşımı dahil).
+    await check("Klasör aç — File System Access yolu: showDirectoryPicker ve alt klasör taraması", async () => {
+      await page.evaluate((b64) => {
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const file = (name) => ({ kind: "file", getFile: async () => new File([bytes], name, { type: "image/png" }) });
+        const dir = (children) => ({ kind: "directory", values: async function* () { yield* children; } });
+        window.showDirectoryPicker = async () => dir([file("PICKER-FIXTURE.png"), dir([file("nested.png")])]);
+      }, png);
+      await page.getByLabel("Klasör aç", { exact: true }).click();
+      await page.locator('aside[aria-label="Seri listesi"] [title="PICKER-FIXTURE"]').first().waitFor();
     });
 
     const selectBrain = async () => {
@@ -173,7 +189,8 @@ async function main() {
         await p.getByRole("dialog").waitFor({ state: "detached" });
       });
       if (kind === "cancel-import") await check("Takılan dosya yüklemesi menüleri engellemez ve iptal edilebilir", async () => {
-        await p.getByLabel("Dosya aç", { exact: true }).setInputFiles({ name: "HANG.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+        // Erişilebilir ad <button aria-label="Dosya aç"> üzerinde; dosyalar gizli <input type="file"> verilir.
+        await p.locator('input[type="file"]:not([webkitdirectory])').setInputFiles({ name: "HANG.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
         await p.getByRole("status", { name: "Dosya yükleme ilerlemesi" }).waitFor();
         await p.locator('aside[aria-label="İnceleme paneli"]').getByRole("button", { name: "DICOM", exact: true }).click();
         assert.equal(await p.locator('aside[aria-label="İnceleme paneli"] table').count(), 1);

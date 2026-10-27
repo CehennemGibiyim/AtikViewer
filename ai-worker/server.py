@@ -26,6 +26,14 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Windows konsolları (cp1254/cp852) varsayılan olarak UTF-8 yazmaz; Türkçe
+# karakterler ve "·" gibi semboller bozuk çıkar. Konsolu UTF-8'e zorla.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):  # noqa: BLE001 — azami uyumlu çıktı akışı yoksa sessiz geç
+        pass
+
 HOST = os.environ.get("ATIK_WORKER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("ATIK_WORKER_PORT", "8787"))
 MAX_BODY = int(os.environ.get("ATIK_MAX_BODY_MB", "600")) * 1024 * 1024

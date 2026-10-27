@@ -6,7 +6,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx tests/image-review.test.ts",
+    "test:menu": "node tests/menu-interactions.cjs",
+    "test:folder": "node tests/folder-import.cjs",
+    "test:review": "node tests/image-review-browser.cjs"
   },
   "dependencies": {
     "dicom-parser": "^1.8.21",
@@ -31,6 +35,7 @@
     "eslint-config-next": "16.2.6",
     "postcss": "8.5.8",
     "tailwindcss": "4.1.17",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3"
   }
 }

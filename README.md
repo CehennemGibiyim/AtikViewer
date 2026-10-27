@@ -66,6 +66,19 @@ npm run build
 npm start
 ```
 
+> **Windows:** adım adım kurulum, gerekli paketler (Node, Python, PostgreSQL, CUDA),
+> derin AI worker kurulumu ve **sık karşılaşılan hataların çözümleri** için
+> **[docs/WINDOWS_KURULUM.md](docs/WINDOWS_KURULUM.md)**. Özet:
+>
+> ```powershell
+> git clone https://github.com/CehennemGibiyim/AtikViewer.git
+> cd AtikViewer
+> Copy-Item .env.example .env
+> npm ci
+> npx drizzle-kit push --config=drizzle.config.ts
+> npm run dev                 # http://localhost:3000
+> ```
+
 ### Yerel Derin AI (ai-worker)
 
 Derin öğrenme çıkarımı ayrı bir yerel süreçte çalışır (Next.js'ten bağımsız,
@@ -107,6 +120,24 @@ Anahtar üretme: `node -e "console.log(require('crypto').randomBytes(32).toStrin
 | `npm run build` / `npm start` | Üretim derlemesi / sunucusu |
 | `npx drizzle-kit push` | Şemayı yerel DB'ye uygula |
 | `npx drizzle-kit push --config=drizzle.config.ts` | Şemayı `DATABASE_URL`'deki DB'ye uygula (Docker/üretim) |
+
+## Testler
+
+Tarayıcı regresyon testleri **production** sunucuya karşı çalıştırılır:
+
+```bash
+npm run build && npm start          # test edilecek sunucu (BASE_URL varsayılanı :3000)
+npm i -D --no-save playwright       # geçici test bağımlılığı (package.json'a yazmaz)
+npx playwright install chromium
+
+npm run test:menu                   # menü, sekme, MPR, PNG, iframe, hata senaryoları (15 kontrol)
+npm run test:folder                 # klasör içe aktarma + yükleme raporu
+npm run test:review                 # görüntü inceleme ölçümleri
+npm test                            # AI motoru birim testi (tsx ile)
+```
+
+> `tests/menu-interactions.cjs` hem klasik `webkitdirectory` yolunu hem de Chromium'un
+> `showDirectoryPicker` yolunu ayrı ayrı sınar. Windows için ayrıntı: [docs/WINDOWS_KURULUM.md](docs/WINDOWS_KURULUM.md)
 
 ## GitHub ve yayınlama
 

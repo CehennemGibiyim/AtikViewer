@@ -17,6 +17,13 @@ import os
 import sys
 import urllib.request
 
+# Windows konsolları varsayılan olarak UTF-8 değil; Türkçe çıktı bozulmasın.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):  # noqa: BLE001
+        pass
+
 BASE = "https://huggingface.co/MONAI/lung_nodule_ct_detection/resolve/main"
 MODEL_DIR = os.environ.get(
     "ATIK_MODEL_DIR",
