@@ -24,6 +24,11 @@ playwright-report/
 test-results/
 tmp/
 
+# Python (ai-worker) ve TypeScript artefektleri
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+
 # İşletim sistemi ve editör artıkları
 .DS_Store
 Thumbs.db

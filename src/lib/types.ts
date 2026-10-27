@@ -59,7 +59,8 @@ export interface Lesion {
   sizeMmStr?: string;
 }
 
-export type FindingSource = "cv-heuristic" | "image-review" | "simulated-sample" | "manual";
+/** ai-model: yerel derin öğrenme modeli (MONAI) çıktısı; sunucudan gelmez, istemcide hacim çıkarımıyla üretilir. */
+export type FindingSource = "cv-heuristic" | "image-review" | "simulated-sample" | "manual" | "ai-model";
 
 export interface FindingMetrics {
   volumeMl?: number;

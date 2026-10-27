@@ -28,7 +28,8 @@ import { SAMPLE_CASE_INFOS, buildSampleCase } from "@/lib/sampleCases";
 import { loadMedicalFiles, type ImportStats } from "@/lib/dicom";
 import { resolveProtocol, runEngine } from "@/lib/ai/engine";
 import { runImageReview } from "@/lib/ai/imageReview";
-import { modelCardFor } from "@/lib/modelCards";
+import { modelCardFor, DEEP_MODEL_CARD } from "@/lib/modelCards";
+import { deepScan, deepScanEligible, mergeDeepFindings, type DeepScanOutput } from "@/lib/deepScan";
 import { KIND_LABEL, annotationSummary } from "@/lib/geometry";
 import { zipAnonymized } from "@/lib/dicomWrite";
 import { findMatchingHangingProtocol, resolveHangingCellSeries } from "@/lib/hangingProtocols";
@@ -448,10 +449,76 @@ export default function Workstation({ user }: { user: UserInfo }) {
     if (keyImages.length >= 8) { toast("En fazla 8 anahtar kesit"); return; }
     if (keyImages.some((k) => k.slice === slice)) { toast("Bu kesit zaten anahtar kesit"); return; }
     const note = (annotations.find((a) => a.slice === slice && a.kind === "arrow")?.text ?? "").slice(0, 40);
-    const dataUrl = renderSlice(series, slice, wl, ww, invert, 320).toDataURL("image/jpeg", 0.85);
-    setKeyImages((k) => [...k, { id: uid(), slice, note, dataUrl }].sort((a, b) => a.slice - b.slice));
-    toast(`★ Kesit ${slice + 1} anahtar kesit olarak eklendi`, 2500);
-  }, [series, keyImages, slice, wl, ww, invert, annotations, toast]);
+    try {
+      const base = renderSlice(series, slice, wl, ww, invert, 640);
+      const W = base.width;
+      const H = base.height;
+      const comp = document.createElement("canvas");
+      comp.width = W;
+      comp.height = H;
+      const ctx = comp.getContext("2d");
+      if (!ctx) throw new Error("canvas yok");
+      ctx.drawImage(base, 0, 0, W, H);
+      const scale = W / series.width;
+      const SEV_COLOR: Record<string, string> = { kritik: "#ff3366", yuksek: "#ff6b6b", orta: "#ffd93d", dusuk: "#4cc9f0", normal: "#38b000" };
+      // AI bulguları çiz
+      for (const f of liveFindings) {
+        if (!revealed.has(f.id)) continue;
+        if (slice < f.sliceStart || slice > f.sliceEnd) continue;
+        const box = f.sliceBoxes?.[slice] ?? f.bbox;
+        if (!box) continue;
+        const col = SEV_COLOR[f.severity] ?? "#4cc9f0";
+        const x = box.x * W;
+        const y = box.y * H;
+        const bw = box.w * W;
+        const bh = box.h * H;
+        ctx.save();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(x, y, bw, bh);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(5,8,12,0.85)";
+        const txt = `[K${f.keySliceNumber}] ${f.label}`;
+        ctx.font = "bold 10px ui-monospace, monospace";
+        const tw = ctx.measureText(txt).width;
+        ctx.fillRect(x, y - 16, tw + 10, 14);
+        ctx.fillStyle = col;
+        ctx.fillText(txt, x + 5, y - 6);
+        ctx.restore();
+      }
+      // Ölçümler çiz
+      ctx.save();
+      ctx.lineWidth = 1.5;
+      ctx.font = "600 10px ui-monospace, monospace";
+      for (const a of annotations) {
+        if (a.slice !== slice) continue;
+        const P = a.points.map((p) => ({ x: p.x * scale, y: p.y * scale }));
+        const color = a.kind === "length" || a.kind === "calib" ? "#ffd60a" : a.kind === "angle" || a.kind === "cobb" ? "#ff66c4" : a.kind === "arrow" ? "#7dd3fc" : a.kind === "rect" || a.kind === "ellipse" || a.kind === "polygon" ? "#b388ff" : "#34d399";
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        if (a.kind === "length" || a.kind === "calib" || a.kind === "arrow") {
+          if (P[0] && P[1]) { ctx.beginPath(); ctx.moveTo(P[0].x, P[0].y); ctx.lineTo(P[1].x, P[1].y); ctx.stroke(); }
+        } else if (a.kind === "rect" && P[0] && P[1]) {
+          ctx.strokeRect(P[0].x, P[0].y, P[1].x - P[0].x, P[1].y - P[0].y);
+        } else if ((a.kind === "ellipse" || a.kind === "ellipsoid") && P[0] && P[1]) {
+          const cx = (P[0].x + P[1].x)/2, cy = (P[0].y + P[1].y)/2;
+          const rx = Math.abs(P[1].x - P[0].x)/2, ry = Math.abs(P[1].y - P[0].y)/2;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+      const dataUrl = comp.toDataURL("image/jpeg", 0.9);
+      setKeyImages((k) => [...k, { id: uid(), slice, note, dataUrl }].sort((a, b) => a.slice - b.slice));
+      toast(`★ Kesit ${slice + 1} anahtar kesit olarak eklendi (işaretli)`, 2500);
+    } catch {
+      const dataUrl = renderSlice(series, slice, wl, ww, invert, 320).toDataURL("image/jpeg", 0.85);
+      setKeyImages((k) => [...k, { id: uid(), slice, note, dataUrl }].sort((a, b) => a.slice - b.slice));
+      toast(`★ Kesit ${slice + 1} anahtar kesit olarak eklendi`, 2500);
+    }
+  }, [series, keyImages, slice, wl, ww, invert, annotations, liveFindings, revealed, toast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -763,6 +830,39 @@ export default function Workstation({ user }: { user: UserInfo }) {
     }
 
     if (runRef.current !== run) return;
+
+    // ───── Derin AI: yerel MONAI nodül modeli ile gerçek HU hacmi çıkarımı (ücretsiz, yerel) ─────
+    let deepOut: DeepScanOutput | null = null;
+    if (proto === "ct-chest" && runRef.current === run) {
+      const reason = deepScanEligible(s);
+      if (reason) {
+        pushFeed(`Derin AI (nodül modeli) atlandı: ${reason}.`, "warn");
+      } else {
+        setScan({ active: true, sliceProgress: 1, scannedSlices: N, totalSlices: N, phaseLabel: "Derin AI çıkarımı (yerel model)" });
+        pushFeed(`🧠 Derin AI: ${N} kesitlik HU hacmi yerel modele gönderiliyor (MONAI lung_nodule_ct_detection · yerel çıkarım · ücretsiz)…`);
+        try {
+          deepOut = await deepScan(s);
+          if (runRef.current !== run) return;
+          pushFeed(
+            deepOut.findings.length > 0
+              ? `✓ Derin AI tamamlandı: ${deepOut.elapsedMs} ms · ${deepOut.findings.length} nodül adayı bulundu (model skoru eşiği ≥ %${Math.round((deepOut.scoreThresh || 0.3) * 100)})`
+              : `✓ Derin AI tamamlandı: ${deepOut.elapsedMs} ms · model bu seride nodül adayı işaretlemedi (bu, normal olduğu anlamına gelmez)`,
+            "done"
+          );
+        } catch (e) {
+          if (runRef.current !== run) return;
+          pushFeed(`Derin AI çalıştırılamadı: ${e instanceof Error ? e.message : "hata"} — kural tabanlı adaylar korunuyor.`, "warn");
+        }
+      }
+    }
+    if (runRef.current !== run) return;
+    if (deepOut && deepOut.findings.length > 0) {
+      const merged = mergeDeepFindings(findings, deepOut.findings);
+      findings = merged.findings;
+      for (const id of merged.dropped) maskMap.delete(id);
+      for (const f of deepOut.findings) pushFeed(`🧠 [${f.sliceRangeStr}] ${f.label} — skor %${Math.round(f.confidence * 100)}, çap ${f.sizeMmStr}`, "finding");
+    }
+
     const stat = [...annotations].reverse().find((a) => a.stats);
     let result: AnalysisResult;
     try {
@@ -783,6 +883,14 @@ export default function Workstation({ user }: { user: UserInfo }) {
     }
     if (runRef.current !== run) return;
 
+    if (deepOut && deepOut.findings.length > 0) {
+      result = {
+        ...result,
+        model: `${result.model} + MONAI lung_nodule_ct_detection (yerel, ücretsiz)`,
+        modelCard: DEEP_MODEL_CARD,
+      };
+    }
+
     setLiveFindings(result.findings); setMasks(maskMap); setRevealed(new Set(result.findings.map((f) => f.id)));
     setAnalysis(result); setEngineNotes(notes); setStatus("done");
     setScan({ active: false, sliceProgress: 1, scannedSlices: N, totalSlices: N, phaseLabel: "Tamamlandı" });
@@ -800,8 +908,92 @@ export default function Workstation({ user }: { user: UserInfo }) {
     setActiveReport(buildReport(result));
     const top = result.findings.find((f) => f.category !== "Sistem" && f.category !== "ROI");
     if (top) { setSlice(top.sliceIndex); setActiveFinding(top.id); }
+    // Otomatik anahtar kesit önerisi: bbox'lı, yüksek öncelikli bulgular
+    try {
+      const sevRank: Record<string, number> = { kritik: 4, yuksek: 3, orta: 2, dusuk: 1, normal: 0 };
+      const candidates = result.findings
+        .filter((f) => f.category !== "Sistem" && f.category !== "ROI" && f.bbox)
+        .sort((a, b) => (sevRank[b.severity] ?? 0) - (sevRank[a.severity] ?? 0))
+        .slice(0, 4);
+      const toAdd = candidates
+        .filter((f) => !keyImages.some((k) => k.slice === f.sliceIndex))
+        .slice(0, Math.max(0, 4 - keyImages.length));
+      for (const f of toAdd) {
+        try {
+          const base = renderSlice(s, f.sliceIndex, s.defaultWL, s.defaultWW, false, 640);
+          const W = base.width; const H = base.height;
+          const comp = document.createElement("canvas"); comp.width = W; comp.height = H;
+          const ctx = comp.getContext("2d"); if (!ctx) continue;
+          ctx.drawImage(base, 0, 0, W, H);
+          const SEV_COLOR: Record<string, string> = { kritik: "#ff3366", yuksek: "#ff6b6b", orta: "#ffd93d", dusuk: "#4cc9f0", normal: "#38b000" };
+          const box = f.sliceBoxes?.[f.sliceIndex] ?? f.bbox;
+          if (box) {
+            ctx.save(); ctx.strokeStyle = SEV_COLOR[f.severity] || "#ff3366"; ctx.lineWidth = 2.5; ctx.strokeRect(box.x*W, box.y*H, box.w*W, box.h*H);
+            ctx.fillStyle = "rgba(5,8,12,0.9)"; const txt = `[K${f.keySliceNumber}] ${f.label.slice(0,40)}`;
+            ctx.font = "bold 10px ui-monospace, monospace"; const tw = ctx.measureText(txt).width;
+            ctx.fillRect(box.x*W, box.y*H-16, tw+10, 14); ctx.fillStyle = SEV_COLOR[f.severity]||"#ff3366"; ctx.fillText(txt, box.x*W+5, box.y*H-6); ctx.restore();
+          }
+          const dataUrl = comp.toDataURL("image/jpeg", 0.9);
+          setKeyImages((k) => [...k, { id: uid(), slice: f.sliceIndex, note: f.label.slice(0,30), dataUrl }].sort((a,b)=>a.slice-b.slice));
+        } catch { /* tek kesit hatası ana akışı bozmasın */ }
+      }
+      if (toAdd.length > 0) toast(`${toAdd.length} anahtar kesit otomatik önerildi`, 2500);
+    } catch { /* öneri hatası analiz sonucunu bozmasın */ }
     void refreshContext();
   };
+
+  /** Tüm yüklenen görüntü serilerini birlikte AI ile analiz eder (çoklu-görüntü akışı). */
+  const startAnalysisAll = useCallback(async () => {
+    const imageSeries = loaded.filter((s) => !(s.specialType && s.specialType !== "image"));
+    if (imageSeries.length === 0) { toast("Analiz edilebilir görüntü serisi yok."); return; }
+    if (imageSeries.length === 1) { await startAnalysis(); return; }
+    toast(`Tüm seriler birlikte analiz ediliyor (${imageSeries.length} seri)...`, 3000);
+    try {
+      setStatus("infer");
+      const seriesPayload = imageSeries.map((s) => {
+        const reps: string[] = [];
+        try {
+          const mid = Math.floor(s.slices.length / 2);
+          reps.push(renderSlice(s, mid, s.defaultWL, s.defaultWW, false, 512).toDataURL("image/jpeg", 0.7));
+          if (s.slices.length > 1) reps.push(renderSlice(s, Math.floor(s.slices.length / 4), s.defaultWL, s.defaultWW, false, 512).toDataURL("image/jpeg", 0.7));
+        } catch { /* kare render edilemezse o seri temsili görselsiz gönderilir */ }
+        return {
+          seriesUid: s.seriesUid,
+          modality: s.modality,
+          description: s.description,
+          bodyPart: s.bodyPart,
+          sliceCount: s.slices.length,
+          representativeImages: reps,
+        };
+      });
+      const rep = await fetch("/api/multi-analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studyUid: series?.studyUid || imageSeries[0].studyUid,
+          clinicalNote,
+          series: seriesPayload,
+        }),
+      });
+      if (!rep.ok) throw new Error(((await rep.json()) as { error?: string }).error || "Birleşik analiz başarısız");
+      const result = (await rep.json()) as AnalysisResult;
+      setLiveFindings(result.findings);
+      setRevealed(new Set(result.findings.map((f) => f.id)));
+      setAnalysis(result);
+      setStatus("done");
+      setMasks(null);
+      setEngineNotes([]);
+      setScan({ active: false, sliceProgress: 1, scannedSlices: 1, totalSlices: 1, phaseLabel: "Tamamlandı" });
+      setActiveReport(buildReport(result));
+      toast(`Birleşik analiz tamamlandı: ${result.findings.length} bulgu`, 3000);
+      const top = result.findings.find((f) => f.category !== "Sistem" && f.category !== "ROI");
+      if (top) { setSlice(top.sliceIndex); setActiveFinding(top.id); }
+      void refreshContext();
+    } catch (e) {
+      setStatus("idle");
+      toast(e instanceof Error ? e.message : "Birleşik analiz hatası");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, clinicalNote, series, refreshContext]);
 
   const measurementsText = useMemo(() => {
     const unit = series?.unit ?? "SI";
@@ -898,6 +1090,14 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const cells = CELLS[layout];
   const refLabel = ["Panel 2", "Panel 3", "Panel 4", "Panel 5", "Panel 6"];
 
+  // Kayıtlı temayı ilk açılışta uygula
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem("atik-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+    } catch { /* depolama kapalıysa varsayılan tema */ }
+  }, []);
+
   return (
     <div data-testid="workstation" className="relative isolate flex h-dvh w-full flex-col overflow-hidden bg-[#070a0f] text-slate-200" onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }} onDrop={onDrop}>
       {dragging && <div className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center border-4 border-dashed border-cyan-400 bg-cyan-950/80 backdrop-blur-sm"><div className="text-4xl">📂</div><div className="mt-3 text-lg font-bold text-white">DICOM klasörünü / dosyaları / ZIP&apos;i bırakın</div></div>}
@@ -919,10 +1119,22 @@ export default function Workstation({ user }: { user: UserInfo }) {
       {/* ── Üst Çubuk 1 ── */}
       <header aria-label="Ana işlemler" className="relative z-20 flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[#1a2230] bg-[#0b0f16] px-2 py-1.5 print:hidden">
         <div className="mr-1 flex shrink-0 items-center gap-2">
+          <img src="/icons/rad-ai-scan.svg" alt="Radyoloji AI Tarama" className="h-7 w-7 rounded" />
           <div className="flex h-7 w-7 items-center justify-center rounded bg-gradient-to-br from-cyan-400 to-emerald-500 font-black text-[#06131a]">A</div>
           <span className="font-mono text-sm font-black tracking-[0.18em] text-slate-100">ATIK<span className="text-cyan-400">VIEWER</span></span>
           <span className="rounded border border-slate-700 px-1 py-0.5 font-mono text-[8px] text-slate-500">{APP_BUILD.split("-").slice(-1)[0]}</span>
           <a href={`/?fresh=${APP_BUILD}`} title="Arayüz paketini temiz biçimde yeniden yükle" className="rounded px-1.5 py-1 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white">↻ Yenile</a>
+          <select
+            aria-label="Tema seç"
+            defaultValue=""
+            onChange={(e) => { const t = e.target.value; if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); try { localStorage.setItem("atik-theme", t); } catch { /* depolama kapalıysa sessizce geç */ } }}
+            className="rounded-md border border-[#1e2735] bg-[#0e141d] px-1.5 py-1 text-[10px] text-slate-300"
+          >
+            <option value="">Koyu (Varsayılan)</option>
+            <option value="clinic-blue">Klinik Mavi</option>
+            <option value="slate-light">Açık Tema</option>
+            <option value="high-contrast">Yüksek Kontrast</option>
+          </select>
         </div>
         <FileSelectControl onFiles={(files) => void processFiles(files, undefined, "dosya")} />
         <FileSelectControl directory onFiles={(files) => void processFiles(files, undefined, "klasör")} />
@@ -1101,6 +1313,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
             keyImages={keyImages} onRemoveKeyImage={(id) => setKeyImages((k) => k.filter((x) => x.id !== id))}
             patientReports={patientReports} priorStudies={priorStudies} onOpenSaved={(id) => void openSaved(id)} onOpenPrior={(s) => void openPrior(s)} onRefreshReports={() => void refreshContext()}
             onOpenReportModal={openReport} currentReportStatus={reportStatus}
+            onStartAll={() => void startAnalysisAll()}
+            loadedCount={loaded.filter((s) => !(s.specialType && s.specialType !== "image")).length}
           />
           </ViewerErrorBoundary>
         </aside>}

@@ -68,6 +68,8 @@ interface Props {
   onRefreshReports: () => void;
   onOpenReportModal: () => void;
   currentReportStatus: "taslak" | "onaylandi";
+  onStartAll?: () => void;
+  loadedCount?: number;
 }
 
 function priorDelta(f: Finding, priors: SavedReport[]): string | null {
@@ -153,6 +155,11 @@ export default function RightPanel(p: Props) {
             <button onClick={p.onStart} disabled={!series || busy || !!(series.specialType && series.specialType !== "image")} className="cursor-pointer rounded-lg bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-bold text-[#06131a] shadow-lg disabled:opacity-40">
               {busy ? "Kareler tek tek işleniyor…" : p.resolved === "image-review" ? `▶ ${status === "done" ? "Yeniden incele" : "Görüntü incelemesini başlat"} (${series?.slices.length ?? 0} kare)` : status === "done" ? "⟳ Yeniden analiz et" : `▶ Analizi başlat (${series?.slices.length ?? 0} kesit)`}
             </button>
+            {p.onStartAll && (p.loadedCount ?? 0) > 1 && (
+              <button onClick={p.onStartAll} disabled={busy} className="cursor-pointer rounded-lg border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-xs font-bold text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
+                ✨ Tüm yüklenen serileri birlikte AI ile analiz et ({p.loadedCount} seri)
+              </button>
+            )}
 
             {busy && scan && (
               <div className="rounded-lg border border-emerald-400/30 bg-emerald-400/5 p-3">

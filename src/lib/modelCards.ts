@@ -50,6 +50,24 @@ export const NO_MODEL_CARD: ModelCard = {
   validation: "-",
 };
 
+/** Yerel derin öğrenme (MONAI) + kural tabanlı motor birlikte çalıştığında rapora yazılan kart. */
+export const DEEP_MODEL_CARD: ModelCard = {
+  name: "MONAI lung_nodule_ct_detection (yerel) + ATIK-CV",
+  version: "bundle 1.0 · LUNA16",
+  intendedUse:
+    "BT toraks serilerinde pulmoner nodül ADAYI işaretleyerek radyoloğun ilgili kesitlere doğrudan gitmesini sağlamak. Tanı koymaz; nihai onay radyoloji uzmanına aittir.",
+  method:
+    "LUNA16 üzerinde eğitilmiş RetinaNet (ResNet50-3D FPN) 3B dedektör. Ön işleme bundle ile birebir: HU klibi [-1024, 300], 0.703×0.703×1.25 mm boşluğa yeniden örnekleme, kayan pencere çıkarımı. Çıkarım TAMAMEN yerel makinede çalışır; hasta verisi dışarı gönderilmez, ücretli servis kullanılmaz. Kural tabanlı ATIK-CV adayları ayrıca sunulur.",
+  limitations: [
+    "LUNA16 popülasyonunda eğitilmiştir; başka protokol/hastalık gruplarında performansı bilinmiyor.",
+    "Yalnızca HU kalibrasyonlu aksiyel BT toraks serilerinde çalışır (BT beyin/MR/direkt grafide çalışmaz).",
+    "Model skoru kalibre olasılık değildir; damar kesiti, kalsifikasyon ve artefaktlar yanlış pozitif verebilir.",
+    "Klinik hasta kohortu ile doğrulanmamıştır; kesin değerlendirme radyoloji uzmanı tarafından yapılmalıdır.",
+  ],
+  validation:
+    "Yerel teknik doğrulama: bilinen nodülleri içeren sentetik toraks hacminde 12 mm ve 9 mm nodüller mm düzeyinde konum ve boyut isabetiyle (skor 0.96/0.95) bulundu. Klinik doğrulama YOKTUR.",
+};
+
 export function modelCardFor(engine: EngineKind): ModelCard {
   if (engine === "cv-heuristic") return CV_MODEL_CARD;
   if (engine === "image-review") return IMAGE_REVIEW_CARD;

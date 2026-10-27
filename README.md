@@ -26,6 +26,13 @@ PostgreSQL (Drizzle ORM) tabanlı bir radyoloji iş istasyonudur.
 - **BT aday odak motoru:** Yalnızca BT beyin (kanama adayı) ve BT toraks (nodül
   adayı) için kural tabanlı, klinik olarak doğrulanmamış inceleme; kesit bazlı kutular,
   aday öncelik skoru ve yöntem kartı. MR/CR örneklerindeki ön tanımlı bulgular DEMO'dur.
+- **Derin öğrenme ile gerçek AI çıkarımı (yerel, ücretsiz):** BT toraks serilerinin
+  gerçek HU hacmi yerel AI worker'ındaki MONAI `lung_nodule_ct_detection` modeline
+  (LUNA16 eğitimi, RetinaNet + ResNet50-3D) gönderilir; model nodül adaylarını kesit
+  aralığı, normalize sınır kutusu ve skoruyla döndürür. Bulgular kural tabanlı
+  adaylarla birleştirilir, otomatik anahtar kesit önerir ve rapora model kartıyla girer.
+  **Çıkarım tamamen bu makinede çalışır; hasta verisi dışarı çıkmaz, ücretli servis
+  kullanılmaz. Klinik doğrulanmamıştır; her bulgu radyoloji uzmanı onayı gerektirir.**
 - **Raporlama:** taslak → onay akışı, bulgu bazlı hekim doğrulaması, sürümleme,
   addendum, A4 yazdırma, FHIR R4 DiagnosticReport dışa aktarma
 - **İş akışı:** çalışma listesi, PACS (DICOMweb QIDO/WADO), HBYS istem alımı,
@@ -59,6 +66,24 @@ npm run build
 npm start
 ```
 
+### Yerel Derin AI (ai-worker)
+
+Derin öğrenme çıkarımı ayrı bir yerel süreçte çalışır (Next.js'ten bağımsız,
+yalnızca `127.0.0.1:8787`):
+
+```bash
+# Python 3.11–3.13 + (tercihen) CUDA'lı torch
+python -m venv .venv && .venv/Scripts/pip install torch monai numpy
+python ai-worker/setup_model.py     # MONAI bundle modelini indirir (~84 MB, Apache-2.0)
+python ai-worker/server.py          # worker'ı başlatır (CPU'da da çalışır, yavaş olur)
+```
+
+- Model: `~/.cache/atikviewer-ai/model/model.pt` (`ATIK_MODEL_DIR` ile değiştirilebilir).
+- Durum: `GET /api/deep-scan` → `{"worker":"up"|"down", ...}`
+- Uygulama içinde BT toraks analizi otomatik olarak bu uca gider; worker kapalıysa
+  kural tabanlı motor devam eder ve uyarı satırı gösterilir.
+- Not: Büyük HU hacimleri için `next.config.ts` içinde gövde sınırı 700 MB'a ayarlıdır.
+
 ## Ortam değişkenleri
 
 | Değişken | Zorunlu | Açıklama |
@@ -68,6 +93,7 @@ npm start
 | `PACS_AUTH_HEADER` | Hayır | DICOMweb kimlik başlığı (örn. `Basic …`) |
 | `HIS_API_KEY` | Hayır | HBYS istem alımı API anahtarı |
 | `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL` | Hayır | Taslak izlenim LLM'i (yoksa kural tabanlı yedek) |
+| `AI_WORKER_URL` | Hayır | Yerel derin AI worker adresi (varsayılan `http://127.0.0.1:8787`) |
 
 Anahtar üretme: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
 
@@ -115,6 +141,7 @@ src/
   lib/vendor/     Lisanslı 12-bit JPEG çözücü (atıflı)
   db/             Drizzle şeması ve istemcisi
 public/codecs/    WASM görüntü çözücüleri (repoda tutulur, CDN değildir)
+ai-worker/        Yerel derin AI worker (MONAI model çıkarımı, Python)
 tests/            Playwright menü + klasör yükleme regresyon testleri
 docs/             Yayınlama ve işletim kılavuzları
 ```
@@ -123,7 +150,9 @@ docs/             Yayınlama ve işletim kılavuzları
 
 - `.env` ve `.data/` asla commit'lenmez (`.gitignore` ile korunur).
 - Hasta verisi diskte AES-256-GCM ile şifrelidir; anahtar yedeğini saklayın.
-- Onay akışı parola ile yeniden doğrulama yapar; yine de bu yazılım tıbbi cihaz
+- Onay akışı kimlik doğrulamaz (giriş kaldırıldı): rapora profildeki hekim adı yazılır
+  ve içerik SHA-256 ile mühürlenir; mühür yalnızca sonradan değişikliği saptar.
+  Gerçek hasta verisi için ağ düzeyinde erişim kısıtı şarttır. Bu yazılım tıbbi cihaz
   değildir ve düzenleyici onay süreçlerinin (MDR/TİTCK vb.) yerini tutmaz.
 
 ## Lisans

@@ -6,6 +6,9 @@ const basePath = pages ? (process.env.NEXT_PUBLIC_BASE_PATH ?? "") : "";
 
 const nextConfig: NextConfig = {
   ...(pages ? { output: "export" as const, basePath, trailingSlash: true, images: { unoptimized: true } } : {}),
+  // Derin AI uç noktası büyük HU hacimleri (gzip int16) alır; Next.js'in varsayılan
+  // 10 MiB gövde sınırı veriyi sessizce keser → 700 MB'a çıkarılır.
+  ...(pages ? {} : { experimental: { proxyClientMaxBodySize: 700 * 1024 * 1024 } }),
   // statik dışa aktarımda başlıklar desteklenmez
   ...(pages ? {} : { async headers() {
     return [

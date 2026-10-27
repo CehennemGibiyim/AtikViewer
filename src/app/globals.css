@@ -48,3 +48,45 @@ details > summary::-webkit-details-marker { display: none; }
   #print-root tr, #print-root img { break-inside: avoid; }
 }
 @media screen { #print-root { display: none; } }
+
+/* Temalar: üst çubuktaki tema seçicisi data-theme ile kök elemana uygulanır. */
+:root {
+  --bg: #070a0f;
+  --panel: #0b0f16;
+  --border: #1a2230;
+  --text: #e2e8f0;
+  --accent-cyan: #22d3ee;
+  --accent-emerald: #22c55e;
+}
+
+[data-theme="clinic-blue"] {
+  --bg: #060b14;
+  --panel: #0a1020;
+  --border: #1e2a44;
+  --text: #e6edf7;
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #34d399;
+}
+
+[data-theme="slate-light"] {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --accent-cyan: #0891b2;
+  --accent-emerald: #059669;
+}
+
+[data-theme="high-contrast"] {
+  --bg: #000000;
+  --panel: #050505;
+  --border: #ffffff;
+  --text: #ffffff;
+  --accent-cyan: #00ffff;
+  --accent-emerald: #00ff00;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
