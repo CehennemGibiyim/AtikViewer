@@ -43,5 +43,76 @@ jobs:
       - name: TypeScript kontrolü
         run: npm exec tsc -- --noEmit --pretty false
 
+      - name: Lint (eslint)
+        run: npm run lint
+
       - name: Üretim derlemesi
         run: npm run build
+
+      - name: Birim testleri
+        run: npm test
+
+  # Tarayıcı regresyon testleri: menü etkileşimleri, klasör içe aktarma,
+  # görüntü incelemesi (15 + 3 + 5 kontrol). Üretim derlemesi + next start
+  # ile çalışır; WebGL/headless chromium yeterlidir.
+  ui-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d app_db"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app_db
+      NEXT_TELEMETRY_DISABLED: 1
+      PORT: 3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Veritabanı şemasını uygula
+        run: npx drizzle-kit push --config=drizzle.config.ts --force
+
+      - name: Playwright chromium kur
+        run: npx playwright install --with-deps chromium
+
+      - name: Üretim derlemesi
+        run: npm run build
+
+      - name: Sunucuyu başlat
+        run: |
+          nohup npm start > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/api/health > /dev/null; then
+              echo "sunucu hazır"; exit 0
+            fi
+            sleep 2
+          done
+          echo "sunucu 120 sn içinde hazır olmadı"; tail -50 server.log; exit 1
+
+      - name: Menü etkileşim testleri (15 kontrol)
+        run: node tests/menu-interactions.cjs
+
+      - name: Klasör içe aktarma testleri (3 kontrol)
+        run: node tests/folder-import.cjs
+
+      - name: Görüntü inceleme testleri (5 kontrol)
+        run: node tests/image-review-browser.cjs
+
+      - name: Sunucu günlüğü (hata durumunda)
+        if: failure()
+        run: tail -100 server.log

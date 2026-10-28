@@ -10,7 +10,8 @@
     "test": "tsx tests/image-review.test.ts",
     "test:menu": "node tests/menu-interactions.cjs",
     "test:folder": "node tests/folder-import.cjs",
-    "test:review": "node tests/image-review-browser.cjs"
+    "test:review": "node tests/image-review-browser.cjs",
+    "test:ui": "node tests/menu-interactions.cjs && node tests/folder-import.cjs && node tests/image-review-browser.cjs"
   },
   "dependencies": {
     "dicom-parser": "^1.8.21",
@@ -33,6 +34,7 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "^16.4.3",
+    "playwright": "^1.64.1",
     "postcss": "8.5.32",
     "tailwindcss": "4.1.17",
     "tsx": "^4.23.15",
