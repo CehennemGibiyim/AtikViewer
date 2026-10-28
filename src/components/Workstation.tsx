@@ -247,13 +247,25 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const pxMm = series ? (pxOverride[series.id] ?? series.pixelSpacing) : 1;
   const noduleMeasurements = useMemo(() => {
     if (!series) return [];
-    return annotations.flatMap((a) => {
+    const manual = annotations.flatMap((a) => {
       const p = a.points;
       if (a.kind === "length" && p.length >= 2) return [{ label: "Uzunluk", mm: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) * pxMm, slice: a.slice }];
       if ((a.kind === "ellipse" || a.kind === "ellipsoid") && p.length >= 2) return [{ label: a.kind === "ellipse" ? "Elips" : "Elipsoid", mm: ((Math.abs(p[1].x - p[0].x) + Math.abs(p[1].y - p[0].y)) / 2) * pxMm, slice: a.slice }];
       return [];
     });
-  }, [annotations, series, pxMm]);
+    // Otomatik karşılaştırma kaynağı: AI aday odaklarının bbox'ından türetilen çaplar
+    // (kural tabanlı + derin AI). NoduleTracker'da "AI ·" etiketiyle görünür; ölçümü
+    // takibe yine hekim seçerek ekler.
+    const auto = (analysis?.findings ?? [])
+      .filter((f) => f.bbox && f.category !== "Sistem" && f.category !== "ROI")
+      .map((f) => {
+        const mmX = f.bbox!.w * series.width * (series.pixelSpacingX || pxMm);
+        const mmY = f.bbox!.h * series.height * pxMm;
+        return { label: `AI · ${f.label.slice(0, 24)}`, mm: (mmX + mmY) / 2, slice: f.sliceIndex };
+      })
+      .filter((m) => Number.isFinite(m.mm) && m.mm > 0 && m.mm < 400);
+    return [...manual, ...auto];
+  }, [annotations, series, pxMm, analysis]);
   const resolved = series ? resolveProtocol(series, protocol) : "none";
   const reportStatus: "taslak" | "onaylandi" = activeReport && series && activeReport.studyUid === series.studyUid ? activeReport.status : "taslak";
 
