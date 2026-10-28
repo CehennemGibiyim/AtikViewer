@@ -760,6 +760,43 @@ export default function Workstation({ user }: { user: UserInfo }) {
   };
 
   // ───── AI Analizi ─────
+  /**
+   * bbox'lı yüksek öncelikli bulguları (derin AI dahil) anahtar kesit önerisine
+   * dönüştürür: kesit render edilir, kutu renkli çizilir, üst sınır korunur.
+   */
+  const suggestKeyImages = (s: SeriesData, findings: Finding[]) => {
+    try {
+      const sevRank: Record<string, number> = { kritik: 4, yuksek: 3, orta: 2, dusuk: 1, normal: 0 };
+      const candidates = findings
+        .filter((f) => f.category !== "Sistem" && f.category !== "ROI" && f.bbox)
+        .sort((a, b) => (sevRank[b.severity] ?? 0) - (sevRank[a.severity] ?? 0))
+        .slice(0, 4);
+      const toAdd = candidates
+        .filter((f) => !keyImages.some((k) => k.slice === f.sliceIndex))
+        .slice(0, Math.max(0, 4 - keyImages.length));
+      for (const f of toAdd) {
+        try {
+          const base = renderSlice(s, f.sliceIndex, s.defaultWL, s.defaultWW, false, 640);
+          const W = base.width; const H = base.height;
+          const comp = document.createElement("canvas"); comp.width = W; comp.height = H;
+          const ctx = comp.getContext("2d"); if (!ctx) continue;
+          ctx.drawImage(base, 0, 0, W, H);
+          const SEV_COLOR: Record<string, string> = { kritik: "#ff3366", yuksek: "#ff6b6b", orta: "#ffd93d", dusuk: "#4cc9f0", normal: "#38b000" };
+          const box = f.sliceBoxes?.[f.sliceIndex] ?? f.bbox;
+          if (box) {
+            ctx.save(); ctx.strokeStyle = SEV_COLOR[f.severity] || "#ff3366"; ctx.lineWidth = 2.5; ctx.strokeRect(box.x*W, box.y*H, box.w*W, box.h*H);
+            ctx.fillStyle = "rgba(5,8,12,0.9)"; const txt = `[K${f.keySliceNumber}] ${f.label.slice(0,40)}`;
+            ctx.font = "bold 10px ui-monospace, monospace"; const tw = ctx.measureText(txt).width;
+            ctx.fillRect(box.x*W, box.y*H-16, tw+10, 14); ctx.fillStyle = SEV_COLOR[f.severity]||"#ff3366"; ctx.fillText(txt, box.x*W+5, box.y*H-6); ctx.restore();
+          }
+          const dataUrl = comp.toDataURL("image/jpeg", 0.9);
+          setKeyImages((k) => [...k, { id: uid(), slice: f.sliceIndex, note: f.label.slice(0,30), dataUrl }].sort((a,b)=>a.slice-b.slice));
+        } catch { /* tek kesit hatası ana akışı bozmasın */ }
+      }
+      if (toAdd.length > 0) toast(`${toAdd.length} anahtar kesit otomatik önerildi`, 2500);
+    } catch { /* öneri hatası analiz sonucunu bozmasın */ }
+  };
+
   const startAnalysis = async () => {
     if (!series || !isImageSeries) { toast("Belge/EKG için piksel analizi yapılamaz; önce bir görüntü serisi seçin."); return; }
     const s = series;
@@ -914,37 +951,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
     setActiveReport(buildReport(result));
     const top = result.findings.find((f) => f.category !== "Sistem" && f.category !== "ROI");
     if (top) { setSlice(top.sliceIndex); setActiveFinding(top.id); }
-    // Otomatik anahtar kesit önerisi: bbox'lı, yüksek öncelikli bulgular
-    try {
-      const sevRank: Record<string, number> = { kritik: 4, yuksek: 3, orta: 2, dusuk: 1, normal: 0 };
-      const candidates = result.findings
-        .filter((f) => f.category !== "Sistem" && f.category !== "ROI" && f.bbox)
-        .sort((a, b) => (sevRank[b.severity] ?? 0) - (sevRank[a.severity] ?? 0))
-        .slice(0, 4);
-      const toAdd = candidates
-        .filter((f) => !keyImages.some((k) => k.slice === f.sliceIndex))
-        .slice(0, Math.max(0, 4 - keyImages.length));
-      for (const f of toAdd) {
-        try {
-          const base = renderSlice(s, f.sliceIndex, s.defaultWL, s.defaultWW, false, 640);
-          const W = base.width; const H = base.height;
-          const comp = document.createElement("canvas"); comp.width = W; comp.height = H;
-          const ctx = comp.getContext("2d"); if (!ctx) continue;
-          ctx.drawImage(base, 0, 0, W, H);
-          const SEV_COLOR: Record<string, string> = { kritik: "#ff3366", yuksek: "#ff6b6b", orta: "#ffd93d", dusuk: "#4cc9f0", normal: "#38b000" };
-          const box = f.sliceBoxes?.[f.sliceIndex] ?? f.bbox;
-          if (box) {
-            ctx.save(); ctx.strokeStyle = SEV_COLOR[f.severity] || "#ff3366"; ctx.lineWidth = 2.5; ctx.strokeRect(box.x*W, box.y*H, box.w*W, box.h*H);
-            ctx.fillStyle = "rgba(5,8,12,0.9)"; const txt = `[K${f.keySliceNumber}] ${f.label.slice(0,40)}`;
-            ctx.font = "bold 10px ui-monospace, monospace"; const tw = ctx.measureText(txt).width;
-            ctx.fillRect(box.x*W, box.y*H-16, tw+10, 14); ctx.fillStyle = SEV_COLOR[f.severity]||"#ff3366"; ctx.fillText(txt, box.x*W+5, box.y*H-6); ctx.restore();
-          }
-          const dataUrl = comp.toDataURL("image/jpeg", 0.9);
-          setKeyImages((k) => [...k, { id: uid(), slice: f.sliceIndex, note: f.label.slice(0,30), dataUrl }].sort((a,b)=>a.slice-b.slice));
-        } catch { /* tek kesit hatası ana akışı bozmasın */ }
-      }
-      if (toAdd.length > 0) toast(`${toAdd.length} anahtar kesit otomatik önerildi`, 2500);
-    } catch { /* öneri hatası analiz sonucunu bozmasın */ }
+    // Otomatik anahtar kesit önerisi: bbox'lı, yüksek öncelikli bulgular (derin AI dahil)
+    suggestKeyImages(s, result.findings);
     void refreshContext();
   };
 
@@ -982,16 +990,47 @@ export default function Workstation({ user }: { user: UserInfo }) {
       });
       if (!rep.ok) throw new Error(((await rep.json()) as { error?: string }).error || "Birleşik analiz başarısız");
       const result = (await rep.json()) as AnalysisResult;
-      setLiveFindings(result.findings);
-      setRevealed(new Set(result.findings.map((f) => f.id)));
-      setAnalysis(result);
+
+      // ───── Derin AI: uygun BT serilerinde yerel MONAI nodül çıkarımı (ücretsiz, yerel) ─────
+      let mergedFindings = result.findings;
+      let deepRan = false;
+      let deepSeries: SeriesData | null = null;
+      const deepAdded: Finding[] = [];
+      const eligible = imageSeries.filter((s) => !deepScanEligible(s)).slice(0, 3); // en fazla 3 seri (süre sınırı)
+      for (const ds of eligible) {
+        setScan({ active: true, sliceProgress: 1, scannedSlices: ds.slices.length, totalSlices: ds.slices.length, phaseLabel: "Derin AI çıkarımı (yerel model)" });
+        pushFeed(`🧠 Derin AI (birleşik): ${ds.description} · ${ds.slices.length} kesit yerel modele gönderiliyor (MONAI · ücretsiz)…`);
+        try {
+          const out = await deepScan(ds);
+          const m = mergeDeepFindings(mergedFindings, out.findings);
+          mergedFindings = m.findings;
+          deepRan = true;
+          deepSeries = ds;
+          for (const f of out.findings) {
+            if (m.findings.some((x) => x.id === f.id)) deepAdded.push(f);
+            pushFeed(`🧠 [${f.sliceRangeStr}] ${f.label} — skor %${Math.round(f.confidence * 100)}, çap ${f.sizeMmStr}`, "finding");
+          }
+          pushFeed(`✓ Derin AI tamamlandı: ${out.elapsedMs} ms · ${out.findings.length} nodül adayı (hekim onayı bekliyor)`, "done");
+        } catch (e) {
+          pushFeed(`Derin AI çalıştırılamadı: ${e instanceof Error ? e.message : "hata"} — kural tabanlı adaylar korunuyor.`, "warn");
+        }
+      }
+      const finalResult: AnalysisResult = deepRan
+        ? { ...result, findings: mergedFindings, model: `${result.model} + MONAI lung_nodule_ct_detection (yerel, ücretsiz)`, modelCard: DEEP_MODEL_CARD }
+        : result;
+
+      setLiveFindings(finalResult.findings);
+      setRevealed(new Set(finalResult.findings.map((f) => f.id)));
+      setAnalysis(finalResult);
       setStatus("done");
       setMasks(null);
       setEngineNotes([]);
       setScan({ active: false, sliceProgress: 1, scannedSlices: 1, totalSlices: 1, phaseLabel: "Tamamlandı" });
-      setActiveReport(buildReport(result));
-      toast(`Birleşik analiz tamamlandı: ${result.findings.length} bulgu`, 3000);
-      const top = result.findings.find((f) => f.category !== "Sistem" && f.category !== "ROI");
+      setActiveReport(buildReport(finalResult));
+      toast(`Birleşik analiz tamamlandı: ${finalResult.findings.length} bulgu${deepRan ? " (derin AI dahil)" : ""}`, 3000);
+      // Derin AI bulguları anahtar kesitlere dönüştürülür (rapor bulgularına aktarım buildReport ile)
+      if (deepSeries && deepAdded.length > 0) suggestKeyImages(deepSeries, deepAdded);
+      const top = finalResult.findings.find((f) => f.category !== "Sistem" && f.category !== "ROI");
       if (top) { setSlice(top.sliceIndex); setActiveFinding(top.id); }
       void refreshContext();
     } catch (e) {
