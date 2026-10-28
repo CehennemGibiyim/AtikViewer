@@ -116,6 +116,8 @@ export default function VolumeRender({ series }: Props) {
 
   // GL kurulumu + doku
   useEffect(() => {
+    let dispose: (() => void) | null = null;
+    void (async () => {
     const c = cv.current; if (!c) return;
     const ctx = c.getContext("webgl2", { antialias: false, preserveDrawingBuffer: true });
     if (!ctx) { setErr("Bu tarayıcı/cihaz WebGL2 desteklemiyor; 3B hacim görüntüleme kullanılamaz."); return; }
@@ -138,7 +140,9 @@ export default function VolumeRender({ series }: Props) {
       gl.current = { gl: ctx, prog, tex, u };
       setErr("");
     } catch (e) { setErr(`WebGL başlatılamadı: ${e instanceof Error ? e.message.slice(0, 120) : "bilinmeyen hata"}`); }
-    return () => { gl.current = null; ctx.getExtension("WEBGL_lose_context")?.loseContext(); };
+      dispose = () => { gl.current = null; ctx.getExtension("WEBGL_lose_context")?.loseContext(); };
+    })();
+    return () => { dispose?.(); };
   }, []);
 
   // doku (pencereye göre 8 bit normalizasyon)

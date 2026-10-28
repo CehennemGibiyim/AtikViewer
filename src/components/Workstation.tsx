@@ -275,9 +275,11 @@ export default function Workstation({ user }: { user: UserInfo }) {
 
   // ───── Başlangıç Yüklemeleri ─────
   useEffect(() => {
-    setPresets(loadWindowPresets());
-    if (window.innerWidth < 900) setShowRightPanel(false);
-    if (window.innerWidth < 640) setShowSeriesPanel(false);
+    void (async () => {
+      setPresets(loadWindowPresets());
+      if (window.innerWidth < 900) setShowRightPanel(false);
+      if (window.innerWidth < 640) setShowSeriesPanel(false);
+    })();
     let cancelled = false;
     void (async () => {
       const built: SeriesData[] = [];
@@ -416,6 +418,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
       })
       .catch(() => {});
     return () => controller.abort();
+    // stateKey seriden türetilir (studyUid + seriesKey); seri kimliği değişimlerini zaten kapsar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateKey]);
 
   useEffect(() => {
@@ -435,7 +439,9 @@ export default function Workstation({ user }: { user: UserInfo }) {
       if (s.ok) setPriorStudies(((await s.json()) as StudyRow[]).filter((x) => x.patientId === series.patientId && x.studyUid !== series.studyUid));
     } catch {}
   }, [series]);
-  useEffect(() => { void refreshContext(); }, [refreshContext]);
+  useEffect(() => {
+    void (async () => { await refreshContext(); })();
+  }, [refreshContext]);
 
   // ───── Cine & Kısayollar ─────
   useEffect(() => {
@@ -1119,6 +1125,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
       {/* ── Üst Çubuk 1 ── */}
       <header aria-label="Ana işlemler" className="relative z-20 flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[#1a2230] bg-[#0b0f16] px-2 py-1.5 print:hidden">
         <div className="mr-1 flex shrink-0 items-center gap-2">
+          {/* Yerel SVG ikonu; next/image ek ağ/bellek katmanı sağlamaz. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- yerel statik SVG */}
           <img src="/icons/rad-ai-scan.svg" alt="Radyoloji AI Tarama" className="h-7 w-7 rounded" />
           <div className="flex h-7 w-7 items-center justify-center rounded bg-gradient-to-br from-cyan-400 to-emerald-500 font-black text-[#06131a]">A</div>
           <span className="font-mono text-sm font-black tracking-[0.18em] text-slate-100">ATIK<span className="text-cyan-400">VIEWER</span></span>

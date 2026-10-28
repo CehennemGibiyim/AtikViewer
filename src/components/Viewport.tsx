@@ -487,7 +487,12 @@ export default function Viewport(props: ViewportProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [draft, finishPolygon]);
 
-  useEffect(() => setDraft(null), [slice, series, tool]);
+  // Kesit/seri/araç değişince çizim taslağını sıfırla (render sırasında korumalı durum güncellemesi).
+  const [prevDraftKey, setPrevDraftKey] = useState(`${slice}-${series?.id ?? ""}-${tool}`);
+  {
+    const k = `${slice}-${series?.id ?? ""}-${tool}`;
+    if (prevDraftKey !== k) { setPrevDraftKey(k); setDraft(null); }
+  }
 
   // ───────── Etkileşimler ─────────
   const local = (e: React.PointerEvent | React.MouseEvent) => {

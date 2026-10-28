@@ -16,7 +16,7 @@ export default function NotificationsBell() {
     }
   }, []);
   useEffect(() => {
-    void load();
+    void (async () => { await load(); })();
     const t = setInterval(load, 20000);
     return () => clearInterval(t);
   }, [load]);

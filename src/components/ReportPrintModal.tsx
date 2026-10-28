@@ -102,6 +102,32 @@ function MicButton({ onText }: { onText: (t: string) => void }) {
   );
 }
 
+/** Rapor metin alanı. Modül seviyesinde tanımlıdır; render sırasında bileşen oluşturulmaz. */
+function ReportField({ name, rows, value, editing, onChange, onMic, onGotoSlice, onClose }: {
+  name: string;
+  rows: number;
+  value: string;
+  editing: boolean;
+  onChange: (v: string) => void;
+  onMic: (t: string) => void;
+  onGotoSlice?: (sliceNumber: number) => void;
+  onClose: () => void;
+}) {
+  const linkify = (text: string) =>
+    text.split(/(Kesit \d+)/g).map((part, i) => {
+      const m = /^Kesit (\d+)$/.exec(part);
+      return m && onGotoSlice ? (
+        <button key={i} type="button" className="font-semibold text-[#0e7490] underline decoration-dotted print:no-underline" onClick={() => { onGotoSlice(Number(m[1])); onClose(); }}>{part}</button>
+      ) : (<span key={i}>{part}</span>);
+    });
+  return (
+    <div>
+      <div className="flex items-center font-bold uppercase text-slate-900">{name}{editing && <MicButton onText={onMic} />}</div>
+      {editing ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} className="mt-1 w-full rounded border border-slate-300 p-2 text-xs" /> : <p className="mt-0.5 whitespace-pre-wrap">{linkify(value)}</p>}
+    </div>
+  );
+}
+
 const STATUS_TR: Record<FindingApprovalStatus, string> = { onaylandi: "✓ Radyolog onayladı", reddedildi: "✗ Reddedildi", duzenlendi: "✎ Düzenlendi", bekliyor: "Onay bekliyor" };
 
 export default function ReportPrintModal({ open, onClose, report: initial, user, onSave, onGotoSlice, srEvidence = null }: Props) {
@@ -115,8 +141,17 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
   const [addenda, setAddenda] = useState<ReportAddendum[]>([]);
   const [addText, setAddText] = useState("");
   const [showVersions, setShowVersions] = useState(false);
+  // createdAt yoksa yazdırma başlığında tutulacak yedik zaman damgası (mount anında bir kez).
+  const [createdFallback] = useState(() => Date.now());
 
-  useEffect(() => { setReport(initial); setError(""); setEditing(false); }, [initial, open]);
+  // Rapor açılışında veya ilk veri değiştiğinde formu sıfırla (render sırasında korumalı durum güncellemesi).
+  const [prevForm, setPrevForm] = useState<{ initial: ReportData; open: boolean }>({ initial, open });
+  if (prevForm.initial !== initial || prevForm.open !== open) {
+    setPrevForm({ initial, open });
+    setReport(initial);
+    setError("");
+    setEditing(false);
+  }
 
   const loadDetail = async (id: number) => {
     const r = await fetch(`/api/reports/${id}`);
@@ -129,7 +164,12 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
     if (!open) return;
     fetch("/api/templates").then((r) => (r.ok ? r.json() : [])).then((t: TemplateRow[]) => setTemplates(t)).catch(() => {});
   }, [open]);
-  useEffect(() => { if (open && report.id) void loadDetail(report.id); else { setVersions([]); setAddenda([]); } }, [open, report.id, report.version]);
+  useEffect(() => {
+    void (async () => {
+      if (open && report.id) await loadDetail(report.id);
+      else { setVersions([]); setAddenda([]); }
+    })();
+  }, [open, report.id, report.version]);
 
   const card = useMemo<ModelCard | null>(() => { try { return report.modelCard ? (JSON.parse(report.modelCard) as ModelCard) : null; } catch { return null; } }, [report.modelCard]);
 
@@ -258,21 +298,6 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
     if (r.ok) { setAddText(""); void loadDetail(report.id); } else setError(((await r.json()) as { error?: string }).error ?? "Addendum eklenemedi");
   };
 
-  const linkify = (text: string) =>
-    text.split(/(Kesit \d+)/g).map((part, i) => {
-      const m = /^Kesit (\d+)$/.exec(part);
-      return m && onGotoSlice ? (
-        <button key={i} type="button" className="font-semibold text-[#0e7490] underline decoration-dotted print:no-underline" onClick={() => { onGotoSlice(Number(m[1])); onClose(); }}>{part}</button>
-      ) : (<span key={i}>{part}</span>);
-    });
-
-  const Field = ({ name, k, rows }: { name: string; k: "technique" | "findingsText" | "impression" | "recommendation"; rows: number }) => (
-    <div>
-      <div className="flex items-center font-bold uppercase text-slate-900">{name}{editing && <MicButton onText={append(k)} />}</div>
-      {editing ? <textarea value={report[k]} onChange={(e) => set(k, e.target.value)} rows={rows} className="mt-1 w-full rounded border border-slate-300 p-2 text-xs" /> : <p className="mt-0.5 whitespace-pre-wrap">{linkify(report[k])}</p>}
-    </div>
-  );
-
   const images = report.keyImages.length > 0 ? report.keyImages.slice(0, 4).map((k) => ({ src: k.dataUrl, cap: `Kesit ${k.slice + 1}${k.note ? ` · ${k.note}` : ""}` })) : report.keyImageDataUrl ? [{ src: report.keyImageDataUrl, cap: "Anahtar kesit" }] : [];
 
   return (
@@ -332,7 +357,7 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                   <h1 className="text-2xl font-black tracking-wider text-[#0e7490]">ATIKVIEWER</h1>
                   <div className="text-right">
                     <div className="text-xs font-black uppercase tracking-wider text-slate-800">Radyoloji raporu</div>
-                    <div className="font-mono text-[11px] text-slate-600">{new Date(report.createdAt || Date.now()).toLocaleString("tr-TR")}</div>
+                    <div className="font-mono text-[11px] text-slate-600">{new Date(report.createdAt || createdFallback).toLocaleString("tr-TR")}</div>
                   </div>
                 </div>
 
@@ -359,10 +384,10 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                   <div className="mt-3 grid grid-cols-1 items-start gap-5 md:grid-cols-12">
                     <div className="flex flex-col gap-3 text-[11.5px] leading-relaxed text-slate-800 md:col-span-8">
                       {report.clinicalInfo && <div><div className="font-bold uppercase text-slate-900">Klinik bilgi</div><p className="mt-0.5 whitespace-pre-wrap">{report.clinicalInfo}</p></div>}
-                      <Field name="Teknik" k="technique" rows={3} />
-                      <Field name="Kesit bazlı bulgular" k="findingsText" rows={8} />
-                      <Field name="Sonuç/İzlenim" k="impression" rows={3} />
-                      <Field name="Öneri" k="recommendation" rows={2} />
+                      <ReportField name="Teknik" rows={3} value={report.technique} editing={editing} onChange={(v) => set("technique", v)} onMic={append("technique")} onGotoSlice={onGotoSlice} onClose={onClose} />
+                      <ReportField name="Kesit bazlı bulgular" rows={8} value={report.findingsText} editing={editing} onChange={(v) => set("findingsText", v)} onMic={append("findingsText")} onGotoSlice={onGotoSlice} onClose={onClose} />
+                      <ReportField name="Sonuç/İzlenim" rows={3} value={report.impression} editing={editing} onChange={(v) => set("impression", v)} onMic={append("impression")} onGotoSlice={onGotoSlice} onClose={onClose} />
+                      <ReportField name="Öneri" rows={2} value={report.recommendation} editing={editing} onChange={(v) => set("recommendation", v)} onMic={append("recommendation")} onGotoSlice={onGotoSlice} onClose={onClose} />
                       {report.measurementsText && <div><div className="font-bold uppercase text-slate-900">Ölçümler</div><p className="mt-0.5 whitespace-pre-wrap font-mono text-[10.5px]">{report.measurementsText}</p></div>}
                       <p className="mt-1 text-[10px] italic text-slate-500">{report.engine === "image-review" ? "Bu bölüm yalnızca gerçek piksellerden hesaplanan görüntü ölçümleridir; hastalık tanısı, normal sonuç veya acil triyaj değildir. Radyolog yorumu gerekir." : "Bu çıktı yapay zeka/kural tabanlı veya DEMO desteklidir; hekim doğrulaması gerekir."}</p>
                     </div>

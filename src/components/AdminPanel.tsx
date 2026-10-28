@@ -63,10 +63,12 @@ export default function AdminPanel({ user }: { user: UserInfo }) {
   }, []);
 
   useEffect(() => {
-    if (tab === "profile") void loadProfile();
-    if (tab === "audit") void loadAudit();
-    if (tab === "ai") void api<{ rows: PerfRow[]; note: string }>("/api/ai/performance").then((r) => r.ok && setPerf(r.data));
-    if (["security", "integration", "compliance"].includes(tab)) void loadSettings();
+    void (async () => {
+      if (tab === "profile") await loadProfile();
+      if (tab === "audit") await loadAudit();
+      if (tab === "ai") { const r = await api<{ rows: PerfRow[]; note: string }>("/api/ai/performance"); if (r.ok) setPerf(r.data); }
+      if (["security", "integration", "compliance"].includes(tab)) await loadSettings();
+    })();
   }, [tab, loadProfile, loadAudit, loadSettings]);
 
   const saveSettings = async (patch: Record<string, unknown>) => {

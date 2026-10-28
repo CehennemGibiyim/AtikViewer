@@ -34,14 +34,20 @@ export default function RefPanel(p: Props) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    if (!series) return;
-    setWl(p.windowOverride?.wl ?? series.defaultWL);
-    setWw(p.windowOverride?.ww ?? series.defaultWW);
-    setLocal(Math.floor(series.slices.length / 2));
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, [series, p.windowOverride?.wl, p.windowOverride?.ww]);
+  // Seri veya pencere ayarı değişince görüntüyü sıfırla: effect yerine render sırasında
+  // korumalı durum güncellemesi (React "You Might Not Need an Effect" deseni).
+  const resetKey = `${series?.id ?? ""}|${p.windowOverride?.wl ?? ""}|${p.windowOverride?.ww ?? ""}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
+    if (series) {
+      setWl(p.windowOverride?.wl ?? series.defaultWL);
+      setWw(p.windowOverride?.ww ?? series.defaultWW);
+      setLocal(Math.floor(series.slices.length / 2));
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  }
 
   const synced = p.syncSlice && !!p.primary && !!series && parallelSeries(p.primary, series);
   const mapped = series && synced ? mapSliceByPosition(p.primary!, p.primarySlice, series) : local;

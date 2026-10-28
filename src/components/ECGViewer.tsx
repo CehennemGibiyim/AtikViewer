@@ -9,6 +9,30 @@ interface Props {
 
 type ECGLayout = "12x1" | "3x4" | "single";
 
+/** Tek bir EKG derivasyonunu canvas'a çizer. State kapalmaz; modül seviyesindedir. */
+function renderLead(
+  ctx: CanvasRenderingContext2D,
+  ch: ECGChannel,
+  startX: number,
+  baselineY: number,
+  maxW: number,
+  freq: number,
+  pxPerSec: number,
+  pxPerMv: number
+) {
+  ctx.strokeStyle = "#38bdf8";
+  ctx.beginPath();
+  const len = ch.samples.length;
+  for (let s = 0; s < len; s++) {
+    const x = startX + (s / freq) * pxPerSec;
+    if (x > startX + maxW) break;
+    const y = baselineY - ch.samples[s] * pxPerMv;
+    if (s === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
 export default function ECGViewer({ ecg }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -191,29 +215,6 @@ export default function ECGViewer({ ecg }: Props) {
       ctx.fillText(label, Math.min(x1, x2) + 16, midY - 5);
     }
   }, [ecg, layout, selectedLead, gainMmPerMv, speedMmPerSec, size, caliperPts]);
-
-  function renderLead(
-    ctx: CanvasRenderingContext2D,
-    ch: ECGChannel,
-    startX: number,
-    baselineY: number,
-    maxW: number,
-    freq: number,
-    pxPerSec: number,
-    pxPerMv: number
-  ) {
-    ctx.strokeStyle = "#38bdf8";
-    ctx.beginPath();
-    const len = ch.samples.length;
-    for (let s = 0; s < len; s++) {
-      const x = startX + (s / freq) * pxPerSec;
-      if (x > startX + maxW) break;
-      const y = baselineY - ch.samples[s] * pxPerMv;
-      if (s === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
 
   // Pointer events for Caliper
   const handlePointerDown = (e: React.PointerEvent) => {

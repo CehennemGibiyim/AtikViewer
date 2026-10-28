@@ -46,7 +46,9 @@ export default function WorklistModal({ open, onClose, user, onOpenStudy, onOpen
     if (r.ok) setRows((await r.json()) as StudyRow[]);
     setLoading(false);
   }, [q, status]);
-  useEffect(() => { if (open && tab === "liste") void load(); }, [open, tab, load]);
+  useEffect(() => {
+    if (open && tab === "liste") void (async () => { await load(); })();
+  }, [open, tab, load]);
 
   const patch = async (id: number, body: Record<string, unknown>) => {
     await fetch(`/api/studies/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

@@ -30,12 +30,16 @@ export default function NoduleTracker({ patientId, patientName, studyDate, measu
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    try { const raw = localStorage.getItem(key(patientId)); const t = raw ? (JSON.parse(raw) as NoduleTrack[]) : []; setTracks(t); setSel(t[0]?.id ?? null); } catch { setTracks([]); }
-    setLoaded(true);
+    void (async () => {
+      try { const raw = localStorage.getItem(key(patientId)); const t = raw ? (JSON.parse(raw) as NoduleTrack[]) : []; setTracks(t); setSel(t[0]?.id ?? null); } catch { setTracks([]); }
+      setLoaded(true);
+    })();
   }, [patientId]);
   useEffect(() => {
     if (!loaded) return;
-    try { localStorage.setItem(key(patientId), JSON.stringify(tracks)); } catch { setMsg("Tarayıcı depolama alanı dolu; kayıt yapılamadı."); }
+    void (async () => {
+      try { localStorage.setItem(key(patientId), JSON.stringify(tracks)); } catch { setMsg("Tarayıcı depolama alanı dolu; kayıt yapılamadı."); }
+    })();
   }, [tracks, loaded, patientId]);
 
   const cur = tracks.find((t) => t.id === sel) ?? null;
@@ -58,9 +62,10 @@ export default function NoduleTracker({ patientId, patientName, studyDate, measu
   const delPoint = (date0: string) => setTracks((all) => all.map((t) => (t.id === sel ? { ...t, points: t.points.filter((p) => p.date !== date0) } : t)));
   const delTrack = (id: string) => { setTracks((all) => all.filter((t) => t.id !== id)); setSel((s) => (s === id ? null : s)); };
 
-  // grafik
+  // grafik — eksen üst sınırı, bileşen açılışında bir kez alınır (render'da saflık için)
+  const [chartNow] = useState(() => Date.now());
   const all = tracks.flatMap((t) => t.points.map((p) => ({ t: new Date(p.date).getTime(), d: p.diameterMm })));
-  const tMin = Math.min(...all.map((a) => a.t), Date.now()), tMax = Math.max(...all.map((a) => a.t), tMin + 86400000 * 30);
+  const tMin = Math.min(...all.map((a) => a.t), chartNow), tMax = Math.max(...all.map((a) => a.t), tMin + 86400000 * 30);
   const dMax = Math.max(16, ...all.map((a) => a.d * 1.15));
   const X = (t: number) => 44 + ((t - tMin) / (tMax - tMin)) * 436, Y = (d: number) => 190 - (d / dMax) * 170;
   const sortedPts = (t: NoduleTrack) => [...t.points].sort((a, b) => a.date.localeCompare(b.date));

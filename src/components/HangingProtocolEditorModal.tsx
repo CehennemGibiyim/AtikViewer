@@ -37,9 +37,11 @@ export default function HangingProtocolEditorModal({ open, onClose, onApplyProto
 
   useEffect(() => {
     if (!open) return;
-    const all = getAllProtocols();
-    setProtocols(all);
-    setSelectedId((id) => all.some((r) => r.id === id) ? id : all[0]?.id ?? "");
+    void (async () => {
+      const all = getAllProtocols();
+      setProtocols(all);
+      setSelectedId((id) => all.some((r) => r.id === id) ? id : all[0]?.id ?? "");
+    })();
     const escape = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);

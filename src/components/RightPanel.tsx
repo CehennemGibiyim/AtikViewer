@@ -105,7 +105,11 @@ export default function RightPanel(p: Props) {
   const [cardOpen, setCardOpen] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
   useEffect(() => { feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight }); }, [feed]);
-  useEffect(() => { if (tab === "gecmis") p.onRefreshReports(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tab]);
+  useEffect(() => {
+    if (tab === "gecmis") p.onRefreshReports();
+    // p kimliği her render'da değiştiği için bilinçli olarak yalnızca sekme izlenir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const revealed = analysis?.findings.filter((f) => revealedIds.has(f.id)) ?? [];
   const busy = status === "infer" || status === "scanning";
