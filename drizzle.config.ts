@@ -1,7 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-// Docker/VPS/CI ortamları için: bağlantıyı DATABASE_URL'den okur.
-// Yerel geliştirmede drizzle.config.json kullanılmaya devam edilebilir.
+// Bağlantıyı DATABASE_URL'den okur; tanımlı değilse yerel varsayılana düşer.
 // Kullanım: npx drizzle-kit push --config=drizzle.config.ts
 export default defineConfig({
   dialect: "postgresql",
