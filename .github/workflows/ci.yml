@@ -113,6 +113,9 @@ jobs:
       - name: Görüntü inceleme testleri (5 kontrol)
         run: node tests/image-review-browser.cjs
 
+      - name: Rapor onay + derin AI akışı (CI'da onay tamamlanır)
+        run: node tests/report-flow.cjs
+
       - name: Sunucu günlüğü (hata durumunda)
         if: failure()
         run: tail -100 server.log

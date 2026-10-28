@@ -11,7 +11,8 @@
     "test:menu": "node tests/menu-interactions.cjs",
     "test:folder": "node tests/folder-import.cjs",
     "test:review": "node tests/image-review-browser.cjs",
-    "test:ui": "node tests/menu-interactions.cjs && node tests/folder-import.cjs && node tests/image-review-browser.cjs"
+    "test:report": "node tests/report-flow.cjs",
+    "test:ui": "node tests/menu-interactions.cjs && node tests/folder-import.cjs && node tests/image-review-browser.cjs && node tests/report-flow.cjs"
   },
   "dependencies": {
     "dicom-parser": "^1.8.21",
