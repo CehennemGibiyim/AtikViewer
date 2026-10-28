@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import {
   CATEGORIES,
   COMPETITORS,
+  COMPETITOR_SITES,
   GAP_ITEMS,
   ROADMAP,
   SOURCES,
@@ -380,6 +381,11 @@ export default function GapAnalysis() {
                   </span>
                 </div>
                 <p className="mt-0.5 text-[11px] text-slate-500">{c.focus}</p>
+                {COMPETITOR_SITES[c.name] && (
+                  <a href={COMPETITOR_SITES[c.name]} target="_blank" rel="noreferrer" className="mt-0.5 inline-block text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 hover:underline">
+                    ↗ Resmî site
+                  </a>
+                )}
                 <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[11.5px] text-slate-300">
                   {c.strengths.map((s) => (
                     <li key={s}>{s}</li>

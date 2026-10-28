@@ -34,6 +34,23 @@ export interface Competitor {
   learn: string;
 }
 
+/** Rakiplerin resmî siteleri — kartlarda "↗ Resmî site" bağlantısı olarak gösterilir. */
+export const COMPETITOR_SITES: Record<string, string> = {
+  RadiAnt: "https://www.radiantviewer.com/",
+  OHIF: "https://ohif.org/",
+  Weasis: "https://weasis.org/",
+  Horos: "https://horosproject.org/",
+  "3D Slicer": "https://www.slicer.org/",
+  MedDream: "https://meddream.net/",
+  MicroDicom: "https://www.microdicom.com/",
+  OsiriX: "https://www.osirixviewer.com/",
+  Aidoc: "https://www.aidoc.com/",
+  "Viz.ai": "https://www.viz.ai/",
+  Lunit: "https://www.lunit.io/",
+  Annalise: "https://annalise.ai/",
+  Gleamer: "https://www.gleamer.ai/",
+};
+
 export interface RoadmapPhase {
   id: string;
   title: string;
@@ -592,6 +609,24 @@ export const COMPETITORS: Competitor[] = [
       "PET-CT füzyon, 4D, montaj, panel bölme",
     ],
     learn: "Klinik düzen ve ilişkili tetkik yönetimi.",
+  },
+  {
+    name: "MicroDicom", type: "viewer", focus: "Windows; ücretsiz başlangıç sürümü",
+    strengths: [
+      "Ücretsiz sürüm kişisel/ticari olmayan kullanım için tam işlevli",
+      "DICOM görüntüleme, temel ölçüm, MPR, DVD/CD okuma",
+      "Kurulumu hafif; klinik dışı istasyonlarda yaygın",
+    ],
+    learn: "Ücretsiz sürümün kapsamını net anlatmak — beklenti yönetimi ve sadelik.",
+  },
+  {
+    name: "OsiriX", type: "viewer", focus: "macOS; araştırma + MD (onaylı) sürümü",
+    strengths: [
+      "MPR, 3D VR, PET-CT füzyon, TIC eğrisi",
+      "Açık kaynak temel + OsiriX MD ile regüle klinik sürüm ayrımı",
+      "Geniş eklenti ve betik ekosistemi",
+    ],
+    learn: "Açık kaynak çekirdeği korurken regüle edilmiş sürümle iş modeli kurma.",
   },
   {
     name: "Aidoc", type: "ai", focus: "Akut bakım triyajı ve çok bulgulu BT yapay zekası",
