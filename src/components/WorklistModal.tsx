@@ -29,6 +29,12 @@ function triageChip(level: string, score: number) {
   return <span className={`whitespace-nowrap rounded border px-1.5 py-0.5 font-mono text-[9.5px] font-bold ${c}`}>{level}</span>;
 }
 
+/** Aidoc/Lunit tarzı: yüksek skorlu vakalar için ayrı "kritik aday" rozeti. */
+function criticalBadge(score: number) {
+  if (score <= 0.8) return null;
+  return <span className="ml-1 inline-flex items-center gap-1 whitespace-nowrap rounded border border-rose-400/60 bg-rose-500/25 px-1.5 py-0.5 font-mono text-[9.5px] font-black tracking-wide text-rose-100"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-400" />KRİTİK ADAY</span>;
+}
+
 export default function WorklistModal({ open, onClose, user, onOpenStudy, onOpenPacs }: Props) {
   const [tab, setTab] = useState<"liste" | "pacs">("liste");
   const [rows, setRows] = useState<StudyRow[]>([]);
@@ -88,13 +94,13 @@ export default function WorklistModal({ open, onClose, user, onOpenStudy, onOpen
             <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full border-collapse text-[11px]">
                 <thead className="sticky top-0 bg-[#0b0f16] text-left text-slate-500">
-                  <tr>{["Triyaj", "Hasta", "ID", "Modalite", "Açıklama", "Tarih", "Durum", "Atanan", "Rapor", ""].map((h) => <th key={h} className="border-b border-[#1a2230] px-3 py-2 font-semibold">{h}</th>)}</tr>
+                  <tr>{["Triyaj ▼", "Hasta", "ID", "Modalite", "Açıklama", "Tarih", "Durum", "Atanan", "Rapor", ""].map((h) => <th key={h} className="border-b border-[#1a2230] px-3 py-2 font-semibold">{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {rows.length === 0 && <tr><td colSpan={10} className="px-3 py-8 text-center text-slate-500">{loading ? "Yükleniyor…" : "Kayıt yok. Görüntü açıp ☁ ile sunucuya kaydedin veya HBYS/PACS'tan getirin."}</td></tr>}
                   {rows.map((s) => (
                     <tr key={s.id} className="hover:bg-[#101722]">
-                      <td className="border-b border-[#141b26] px-3 py-2">{triageChip(s.triageLevel, s.triageScore)}</td>
+                      <td className="border-b border-[#141b26] px-3 py-2">{triageChip(s.triageLevel, s.triageScore)}{criticalBadge(s.triageScore)}</td>
                       <td className="border-b border-[#141b26] px-3 py-2 font-semibold text-slate-100">{s.patientName}</td>
                       <td className="border-b border-[#141b26] px-3 py-2 font-mono text-slate-400">{s.patientId}</td>
                       <td className="border-b border-[#141b26] px-3 py-2 font-bold text-cyan-300">{s.modality}</td>

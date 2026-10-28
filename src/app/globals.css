@@ -49,6 +49,20 @@ details > summary::-webkit-details-marker { display: none; }
 }
 @media screen { #print-root { display: none; } }
 
+/* Denetim kaydı yazdırması (Yönetim → Denetim kaydı → PDF): rapor kâğıdı yokken
+   yönetim sayfasının kendisi yazdırılır; koyu tema yerine okunur siyah-beyaz. */
+@media print {
+  body.print-audit > *:not(#print-root) { display: block !important; }
+  .audit-print { max-height: none !important; overflow: visible !important; }
+  .audit-print,
+  .audit-print * {
+    color: #111 !important;
+    background: transparent !important;
+    border-color: #ccc !important;
+  }
+  .audit-print thead { position: static !important; }
+}
+
 /* Temalar: üst çubuktaki tema seçicisi data-theme ile kök elemana uygulanır. */
 :root {
   --bg: #070a0f;

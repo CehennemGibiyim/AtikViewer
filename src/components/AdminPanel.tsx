@@ -82,17 +82,41 @@ export default function AdminPanel({ user }: { user: UserInfo }) {
     void loadProfile();
   };
 
+  // Denetim kaydını (ekrandaki filtreli/sınırlı liste) CSV olarak indir
+  const exportAuditCsv = () => {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const head = ["#", "Zaman", "Kullanıcı", "İşlem", "Kayıt", "Ayrıntı", "Hash"];
+    const rows = audit.map((a) => [
+      String(a.id),
+      new Date(a.ts).toLocaleString("tr-TR"),
+      a.username,
+      a.action,
+      `${a.entityType}${a.entityId ? `#${a.entityId}` : ""}`,
+      a.details,
+      a.hash,
+    ].map(esc).join(","));
+    const csv = "\ufeff" + [head.map(esc).join(","), ...rows].join("\r\n");
+    const el = document.createElement("a");
+    el.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    el.download = `denetim-kaydi-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(el);
+    el.click();
+    el.remove();
+    setTimeout(() => URL.revokeObjectURL(el.href), 3000);
+    flash(`CSV indirildi (${audit.length} kayıt${aq ? ", filtreli" : ""}). Tüm geçmiş için arama kutusunu boş bırakıp yenileyin.`);
+  };
+
   const tabs: [Tab, string][] = [["profile", "Hekim profili"], ["audit", "Denetim kaydı"], ["ai", "AI performans"], ["security", "Güvenlik & saklama"], ["integration", "Entegrasyon"], ["compliance", "Uyum"]];
 
   return (
     <div className="h-screen w-screen overflow-y-auto bg-[#070a0f] text-slate-200">
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[#1a2230] bg-[#0b0f16]/95 px-5 py-3 backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[#1a2230] bg-[#0b0f16]/95 px-5 py-3 backdrop-blur print:hidden">
         <Link href="/" className="rounded-md border border-cyan-400/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20">← Görüntüleyici</Link>
         <h1 className="font-mono text-sm font-black tracking-[0.15em] text-slate-100">ATIK<span className="text-cyan-400">VIEWER</span> · YÖNETİM</h1>
         <span className="ml-auto text-xs text-slate-400">{user.fullName}</span>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-6">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 print:hidden">
           {tabs.map(([id, l]) => <button key={id} onClick={() => setTab(id)} className={`${btn} ${tab === id ? "bg-cyan-400/15 text-cyan-300 ring-1 ring-cyan-400/40" : "text-slate-400 hover:text-slate-200"}`}>{l}</button>)}
         </div>
         {msg && <div className="mt-3 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-200">{msg}</div>}
@@ -140,13 +164,15 @@ export default function AdminPanel({ user }: { user: UserInfo }) {
 
         {tab === "audit" && (
           <div className="mt-4 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
               <input value={aq} onChange={(e) => setAq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void loadAudit()} placeholder="Ara: kullanıcı, işlem, kayıt…" className={`${input} w-72`} />
               <button className={`${btn} bg-cyan-500 text-slate-950`} onClick={() => void loadAudit()}>Ara</button>
               <button className={`${btn} border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/10`} onClick={async () => { const r = await api<{ ok: boolean; count: number; brokenAtId?: number; reason?: string }>("/api/audit?verify=1"); setChain(r.data); }}>🔗 Hash zincirini doğrula</button>
+              <button className={`${btn} border border-slate-400/40 text-slate-200 hover:bg-slate-400/10`} title="Ekrandaki filtreli listeyi CSV olarak indir" onClick={exportAuditCsv}>⬇ CSV</button>
+              <button className={`${btn} border border-slate-400/40 text-slate-200 hover:bg-slate-400/10`} title="Yazdırma penceresinden 'PDF olarak kaydet' seçin" onClick={() => { document.body.classList.add("print-audit"); window.addEventListener("afterprint", () => document.body.classList.remove("print-audit"), { once: true }); window.print(); }}>🖨 PDF</button>
             </div>
             {chain && <div className={`rounded-lg border px-3 py-2 text-xs font-semibold ${chain.ok ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-rose-500/50 bg-rose-500/10 text-rose-300"}`}>{chain.ok ? `✓ Zincir bütün: ${chain.count} kayıt, değişiklik/silme yok.` : `✗ Zincir bozuk (kayıt #${chain.brokenAtId}): ${chain.reason}`}</div>}
-            <div className={`${card} max-h-[60vh] overflow-auto p-0`}>
+            <div className={`${card} audit-print max-h-[60vh] overflow-auto p-0`}>
               <table className="w-full text-[11px]">
                 <thead className="sticky top-0 bg-[#0b1018] text-left text-slate-500"><tr>{["#", "Zaman", "Kullanıcı", "İşlem", "Kayıt", "Ayrıntı", "Hash"].map((h) => <th key={h} className="border-b border-[#1a2230] px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
                 <tbody>
