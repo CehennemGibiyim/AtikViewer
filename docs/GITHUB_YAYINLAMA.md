@@ -71,6 +71,27 @@ docker compose up --build -d
    DATABASE_URL="<üretim-bağlantısı>" npx drizzle-kit push --config=drizzle.config.ts
    ```
 
+### Seçenek D — GHCR hazır imajı (her main push'unda)
+
+`.github/workflows/docker.yml` her `main` push'unda ve `v*` etiketinde
+`ghcr.io/KULLANICI_ADINIZ/atikviewer:latest` imajını otomatik yayınlar.
+
+```bash
+# Herhangi bir Docker kurulu sunucuda doğrudan çalıştırma:
+docker pull ghcr.io/kullaniciniz/atikviewer:latest
+docker run -d -p 3000:3000 --env-file .env \
+  -v pgdata:/var/lib/postgresql/data \
+  ghcr.io/kullaniciniz/atikviewer:latest
+```
+
+- **Render'da imaj kullanımı:** Render → New → Web Service → registry
+  seçeneğiyle GHCR imajını verebilirsiniz (repo public olmalı veya
+  Render'ın GHCR erişimi tanımlanmalı).
+- **Üretimde `:latest` yerine sabit etiket** (`v1.2.3`) kullanın; etiketler
+  `git tag v1.2.3 && git push --tags` ile yayınlanır.
+- GHCR depolama public repoda ücretsizdir; imaj geçmişini Render'da
+  kullanmıyorsanız paket ayarlarından temizleyebilirsiniz.
+
 ## 3. İlk açılış kontrolleri
 
 - `https://ADRESINIZ/api/health` → `{"ok":true}` dönmeli.

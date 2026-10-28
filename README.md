@@ -105,7 +105,7 @@ python ai-worker/server.py          # worker'ı başlatır (CPU'da da çalışı
 | `DATA_ENCRYPTION_KEY` | Üretimde | Base64, 32 bayt AES-256 anahtarı (boşsa `.data/enc.key` üretilir) |
 | `PACS_AUTH_HEADER` | Hayır | DICOMweb kimlik başlığı (örn. `Basic …`) |
 | `HIS_API_KEY` | Hayır | HBYS istem alımı API anahtarı |
-| `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL` | Hayır | Taslak izlenim LLM'i (yoksa kural tabanlı yedek) |
+| `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL` | Hayır | Taslak izlenim LLM'i (yoksa kural tabanlı yedek). Ücretsiz yerel yol: [docs/OLLAMA.md](docs/OLLAMA.md) |
 | `AI_WORKER_URL` | Hayır | Yerel derin AI worker adresi (varsayılan `http://127.0.0.1:8787`) |
 
 Anahtar üretme: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
