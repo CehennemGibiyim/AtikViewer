@@ -137,7 +137,9 @@ async function main() {
       await panel.getByRole("button", { name: "DICOM", exact: true }).click();
       assert(await panel.locator("table").count());
       await panel.getByRole("button", { name: /^Ölçüm/ }).click();
-      assert(await panel.getByText("Anahtar kesitler (0)", { exact: true }).count());
+      // Sunucuda kalıcı durum (anahtar kesitler) önceki oturumlardan geri yüklenebilir;
+      // bölümün varlığı ve sayaç biçimi doğrulanır, sıfırlık varsayılmaz.
+      assert(await panel.getByText(/Anahtar kesitler \(\d+\)/).count());
       await panel.getByRole("button", { name: "Vision AI", exact: true }).click();
       assert(await panel.getByRole("button", { name: /Analizi başlat/ }).count());
     });

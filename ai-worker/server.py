@@ -4,11 +4,13 @@
 Hasta verisi dışarı gönderilmez; tüm çıkarım bu makinede çalışır.
 
 Protokol:
-  GET  /health  -> {"ok":true,"modelLoaded":bool,...}
-  POST /infer?dims=Z,Y,X&spacing=sz,sy,sx
+  GET  /health  -> {"ok":true,"modelLoaded":bool,"brain":{...},...}
+  POST /infer?dims=Z,Y,X&spacing=sz,sy,sx[&protocol=ct-chest|ct-head]
        başlık yerine query; gövde = gzip(int16 HU dizisi, little-endian)
        yanıt = {"boxes":[{"x","y","w","h","z0","z1","score"}], "elapsedMs":N, ...}
        Kutular [0,1] normalleştirilmiş (gönderilen hacmin), z0/z1 kesit indisleri.
+       protocol=ct-head → yerel ICH modeli (brain_lib) devreye girer; yanıta
+       "label" (kanama alt tipi), "series" ve "slicePeaks" eklenir.
 
 Kurulum: python ai-worker/setup_model.py (model dosyalarını indirir).
 """
@@ -39,9 +41,11 @@ PORT = int(os.environ.get("ATIK_WORKER_PORT", "8787"))
 MAX_BODY = int(os.environ.get("ATIK_MAX_BODY_MB", "600")) * 1024 * 1024
 
 import model_lib  # noqa: E402
+import brain_lib  # noqa: E402
 
 _infer_lock = threading.Lock()
 _load_lock = threading.Lock()
+_brain_lock = threading.Lock()
 
 
 def _ensure_model():
@@ -79,7 +83,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/health":
             ready = model_lib.model_ready()
             loaded = model_lib._state["inferer"] is not None
-            self._send({"ok": True, "modelLoaded": loaded, "modelFile": ready, "roi": list(model_lib.ROI_SIZE)})
+            brain_ready = brain_lib.model_files_ready()
+            brain_loaded = brain_lib._state["model"] is not None
+            self._send({
+                "ok": True,
+                "modelLoaded": loaded,
+                "modelFile": ready,
+                "roi": list(model_lib.ROI_SIZE),
+                "brain": {"modelFile": brain_ready, "modelLoaded": brain_loaded},
+            })
         else:
             self._send({"error": "not found"}, 404)
 
@@ -96,6 +108,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send({"error": "not found"}, 404)
             return
         qs = parse_qs(parsed.query)
+        protocol = (qs.get("protocol") or ["ct-chest"])[0].strip().lower()
+        if protocol not in ("ct-chest", "ct-head"):
+            self._send({"error": f"Bilinmeyen protocol: {protocol}"}, 400)
+            return
         try:
             dims = [int(v) for v in qs["dims"][0].split(",")]  # Z,Y,X
             spacing = [float(v) for v in qs["spacing"][0].split(",")]  # sz,sy,sx
@@ -120,6 +136,22 @@ class Handler(BaseHTTPRequestHandler):
             self._send({"error": f"Veri boyutu tutmuyor: {len(buf)} != {expected}"}, 400)
             return
         hu = np.frombuffer(buf, dtype="<i2").reshape(z, y, x).astype(np.float32)
+
+        # ───── BT beyin: yerel ICH derin öğrenme modeli ─────
+        if protocol == "ct-head":
+            try:
+                brain_lib.get_model()  # ilk çağrıda yükler; hazır değilse hata fırlatır
+            except Exception as e:  # noqa: BLE001
+                self._send({"error": f"Beyin modeli yüklenemedi: {e}"}, 503)
+                return
+            try:
+                with _brain_lock:
+                    res = brain_lib.run_brain_inference(hu)
+            except Exception as e:  # noqa: BLE001
+                self._send({"error": f"Beyin çıkarım hatası: {e}"}, 500)
+                return
+            self._send(res)
+            return
 
         ok, err = _ensure_model()
         if not ok:
@@ -188,6 +220,10 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     print(f"ATIKVIEWER AI worker: http://{HOST}:{PORT} · model={model_lib.MODEL_PATH}", flush=True)
+    if brain_lib.model_files_ready():
+        print(f"Beyin (ICH) modeli hazır: {brain_lib.CACHE_DIR} · ilk istekte yüklenir.", flush=True)
+    else:
+        print(f"UYARI: beyin modeli ağırlıkları yok ({brain_lib.CACHE_DIR}); /infer?protocol=ct-head 503 döner.", flush=True)
     if not model_lib.model_ready():
         print(f"UYARI: model dosyası yok ({model_lib.MODEL_PATH}); /infer 503 döner.", flush=True)
     else:

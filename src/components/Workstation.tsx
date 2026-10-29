@@ -28,7 +28,7 @@ import { SAMPLE_CASE_INFOS, buildSampleCase } from "@/lib/sampleCases";
 import { loadMedicalFiles, type ImportStats } from "@/lib/dicom";
 import { resolveProtocol, runEngine } from "@/lib/ai/engine";
 import { runImageReview } from "@/lib/ai/imageReview";
-import { modelCardFor, DEEP_MODEL_CARD } from "@/lib/modelCards";
+import { modelCardFor, DEEP_MODEL_CARD, DEEP_BRAIN_MODEL_CARD } from "@/lib/modelCards";
 import { deepScan, deepScanEligible, mergeDeepFindings, type DeepScanOutput } from "@/lib/deepScan";
 import { KIND_LABEL, annotationSummary } from "@/lib/geometry";
 import { zipAnonymized } from "@/lib/dicomWrite";
@@ -888,20 +888,26 @@ export default function Workstation({ user }: { user: UserInfo }) {
 
     // ───── Derin AI: yerel MONAI nodül modeli ile gerçek HU hacmi çıkarımı (ücretsiz, yerel) ─────
     let deepOut: DeepScanOutput | null = null;
-    if (proto === "ct-chest" && runRef.current === run) {
+    const deepProto = proto === "ct-chest" || proto === "ct-head" ? proto : null;
+    if (deepProto && runRef.current === run) {
       const reason = deepScanEligible(s);
       if (reason) {
-        pushFeed(`Derin AI (nodül modeli) atlandı: ${reason}.`, "warn");
+        pushFeed(`Derin AI (${deepProto === "ct-head" ? "beyin kanama" : "nodül"} modeli) atlandı: ${reason}.`, "warn");
       } else {
         setScan({ active: true, sliceProgress: 1, scannedSlices: N, totalSlices: N, phaseLabel: "Derin AI çıkarımı (yerel model)" });
-        pushFeed(`🧠 Derin AI: ${N} kesitlik HU hacmi yerel modele gönderiliyor (MONAI lung_nodule_ct_detection · yerel çıkarım · ücretsiz)…`);
+        pushFeed(
+          deepProto === "ct-head"
+            ? `🧠 Derin AI: ${N} kesitlik HU hacmi yerel beyin modeline gönderiliyor (ct-head-hemorrhage-detection · yerel çıkarım · ücretsiz · CPU birkaç dakika sürebilir)…`
+            : `🧠 Derin AI: ${N} kesitlik HU hacmi yerel modele gönderiliyor (MONAI lung_nodule_ct_detection · yerel çıkarım · ücretsiz)…`
+        );
         try {
-          deepOut = await deepScan(s);
+          deepOut = await deepScan(s, undefined, deepProto);
           if (runRef.current !== run) return;
+          const noun = deepProto === "ct-head" ? "kanama adayı" : "nodül adayı";
           pushFeed(
             deepOut.findings.length > 0
-              ? `✓ Derin AI tamamlandı: ${deepOut.elapsedMs} ms · ${deepOut.findings.length} nodül adayı bulundu (model skoru eşiği ≥ %${Math.round((deepOut.scoreThresh || 0.3) * 100)})`
-              : `✓ Derin AI tamamlandı: ${deepOut.elapsedMs} ms · model bu seride nodül adayı işaretlemedi (bu, normal olduğu anlamına gelmez)`,
+              ? `✓ Derin AI tamamlandı: ${deepOut.elapsedMs} ms · ${deepOut.findings.length} ${noun} bulundu (model skoru eşiği ≥ %${Math.round((deepOut.scoreThresh || 0.3) * 100)})`
+              : `✓ Derin AI tamamlandı: ${deepOut.elapsedMs} ms · model bu seride ${noun} işaretlemedi (bu, normal olduğu anlamına gelmez)`,
             "done"
           );
         } catch (e) {
@@ -941,8 +947,8 @@ export default function Workstation({ user }: { user: UserInfo }) {
     if (deepOut && deepOut.findings.length > 0) {
       result = {
         ...result,
-        model: `${result.model} + MONAI lung_nodule_ct_detection (yerel, ücretsiz)`,
-        modelCard: DEEP_MODEL_CARD,
+        model: `${result.model} + ${deepProto === "ct-head" ? "ct-head-hemorrhage-detection" : "MONAI lung_nodule_ct_detection"} (yerel, ücretsiz)`,
+        modelCard: deepProto === "ct-head" ? DEEP_BRAIN_MODEL_CARD : DEEP_MODEL_CARD,
       };
     }
 
@@ -1008,12 +1014,17 @@ export default function Workstation({ user }: { user: UserInfo }) {
       let deepRan = false;
       let deepSeries: SeriesData | null = null;
       const deepAdded: Finding[] = [];
-      const eligible = imageSeries.filter((s) => !deepScanEligible(s)).slice(0, 3); // en fazla 3 seri (süre sınırı)
-      for (const ds of eligible) {
+      const eligible = imageSeries
+        .map((s) => ({ s, p: resolveProtocol(s, "auto") }))
+        .filter((e) => (e.p === "ct-chest" || e.p === "ct-head") && !deepScanEligible(e.s))
+        .slice(0, 3); // en fazla 3 seri (süre sınırı)
+      for (const { s: ds, p: dpRaw } of eligible) {
+        if (dpRaw !== "ct-chest" && dpRaw !== "ct-head") continue;
+        const dp = dpRaw;
         setScan({ active: true, sliceProgress: 1, scannedSlices: ds.slices.length, totalSlices: ds.slices.length, phaseLabel: "Derin AI çıkarımı (yerel model)" });
-        pushFeed(`🧠 Derin AI (birleşik): ${ds.description} · ${ds.slices.length} kesit yerel modele gönderiliyor (MONAI · ücretsiz)…`);
+        pushFeed(`🧠 Derin AI (birleşik): ${ds.description} · ${ds.slices.length} kesit yerel modele gönderiliyor (${dp === "ct-head" ? "beyin kanama modeli" : "MONAI"} · ücretsiz)…`);
         try {
-          const out = await deepScan(ds);
+          const out = await deepScan(ds, undefined, dp);
           const m = mergeDeepFindings(mergedFindings, out.findings);
           mergedFindings = m.findings;
           deepRan = true;
@@ -1022,13 +1033,19 @@ export default function Workstation({ user }: { user: UserInfo }) {
             if (m.findings.some((x) => x.id === f.id)) deepAdded.push(f);
             pushFeed(`🧠 [${f.sliceRangeStr}] ${f.label} — skor %${Math.round(f.confidence * 100)}, çap ${f.sizeMmStr}`, "finding");
           }
-          pushFeed(`✓ Derin AI tamamlandı: ${out.elapsedMs} ms · ${out.findings.length} nodül adayı (hekim onayı bekliyor)`, "done");
+          pushFeed(`✓ Derin AI tamamlandı: ${out.elapsedMs} ms · ${out.findings.length} aday (hekim onayı bekliyor)`, "done");
         } catch (e) {
           pushFeed(`Derin AI çalıştırılamadı: ${e instanceof Error ? e.message : "hata"} — kural tabanlı adaylar korunuyor.`, "warn");
         }
       }
+      const brainUsed = deepSeries !== null && resolveProtocol(deepSeries, "auto") === "ct-head";
       const finalResult: AnalysisResult = deepRan
-        ? { ...result, findings: mergedFindings, model: `${result.model} + MONAI lung_nodule_ct_detection (yerel, ücretsiz)`, modelCard: DEEP_MODEL_CARD }
+        ? {
+            ...result,
+            findings: mergedFindings,
+            model: `${result.model} + ${brainUsed ? "ct-head-hemorrhage-detection" : "MONAI lung_nodule_ct_detection"} (yerel, ücretsiz)`,
+            modelCard: brainUsed ? DEEP_BRAIN_MODEL_CARD : DEEP_MODEL_CARD,
+          }
         : result;
 
       setLiveFindings(finalResult.findings);

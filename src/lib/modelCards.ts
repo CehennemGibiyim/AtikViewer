@@ -68,6 +68,24 @@ export const DEEP_MODEL_CARD: ModelCard = {
     "Yerel teknik doğrulama: bilinen nodülleri içeren sentetik toraks hacminde 12 mm ve 9 mm nodüller mm düzeyinde konum ve boyut isabetiyle (skor 0.96/0.95) bulundu. Klinik doğrulama YOKTUR.",
 };
 
+/** Yerel derin öğrenme — beyin (ICH) modeli devreye girdiğinde rapora yazılan kart. */
+export const DEEP_BRAIN_MODEL_CARD: ModelCard = {
+  name: "ct-head-hemorrhage-detection (yerel) + ATIK-CV",
+  version: "MIT · RSNA ICH eğitimi",
+  intendedUse:
+    "BT beyin serilerinde intrakraniyal kanama ADAYI işaretleyerek radyoloğun ilgili kesitlere doğrudan gitmesini sağlamak. Tanı koymaz; nihai onay radyoloji uzmanına aittir.",
+  method:
+    "MaxViT-tabanlı paylaşımlı kodlayıcı + 5 alt tip sınıflandırıcı (epidural, intraparankimal, intraventriküler, subaraknoid, subdural), BiGRU dizi bağlamı ve 5 katmanlı (fold) anlamsal ayrıştırıcı maske. Üç pencereli (40/80, 80/200, 600/2800 HU) girdi. Çıkarım TAMAMEN yerel makinede çalışır; hasta verisi dışarı gönderilmez, ücretli servis kullanılmaz.",
+  limitations: [
+    "RSNA ICH (2019) popülasyonunda eğitilmiştir; başka protokol/hastalık gruplarında performansı bilinmiyor.",
+    "Yalnızca HU kalibrasyonlu aksiyel BT beyin serilerinde çalışır.",
+    "Model skoru kalibre olasılık değildir; kemik, kalsifikasyon ve hareket artefaktları yanlış pozitif verebilir.",
+    "Klinik hasta kohortu ile yerel doğrulanmamıştır; kesin değerlendirme radyoloji uzmanı tarafından yapılmalıdır.",
+  ],
+  validation:
+    "Yerel teknik doğrulama: sentetik gürültü serilerinde yanlış pozitif üretilmedi; klinik doğrulama (duyarlılık/özgüllük tablosu) YAPILMAMIŞTIR.",
+};
+
 export function modelCardFor(engine: EngineKind): ModelCard {
   if (engine === "cv-heuristic") return CV_MODEL_CARD;
   if (engine === "image-review") return IMAGE_REVIEW_CARD;

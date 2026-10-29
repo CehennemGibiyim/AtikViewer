@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
   const a = await authorize();
   if ("error" in a) return a.error;
 
+  const protocol = new URL(req.url).searchParams.get("protocol") ?? "ct-chest";
+  if (protocol !== "ct-chest" && protocol !== "ct-head") return err("Geçersiz protocol (ct-chest|ct-head)");
+  // Beyin modeli CPU'da dakikalar sürebilir; protokole göre zaman aşımı.
+  const upstreamTimeout = protocol === "ct-head" ? 1_500_000 : 300_000;
+
   const dims = req.headers.get("x-dims") ?? "";
   const spacing = req.headers.get("x-spacing") ?? "";
   if (!/^\d{1,7},\d{1,7},\d{1,7}$/.test(dims)) return err("X-Dims başlığı geçersiz (Z,Y,X bekleniyor)");
@@ -40,11 +45,11 @@ export async function POST(req: NextRequest) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${WORKER}/infer?dims=${dims}&spacing=${spacing}`, {
+    upstream = await fetch(`${WORKER}/infer?dims=${dims}&spacing=${spacing}&protocol=${protocol}`, {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
       body: new Uint8Array(body),
-      signal: AbortSignal.timeout(300_000), // CPU fallback uzun sürebilir
+      signal: AbortSignal.timeout(upstreamTimeout), // CPU çıkarımı uzun sürebilir
     });
   } catch {
     return err("Yerel AI worker'a ulaşılamadı (127.0.0.1:8787). Yerel çıkarım için ai-worker başlatılmalı.", 502);
@@ -57,6 +62,7 @@ export async function POST(req: NextRequest) {
     await audit(a.user, "ai.deep_scan", "study", (req.headers.get("x-study-uid") ?? "").slice(0, 64), {
       boxes: Array.isArray(data.boxes) ? data.boxes.length : 0,
       dims,
+      protocol,
     });
   } catch { /* denetim kaydı zorunlu değil */ }
 

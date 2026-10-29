@@ -15,6 +15,9 @@ export interface DeepBox {
   x: number; y: number; w: number; h: number; // [0,1] normalize (gönderilen hacmin genişlik/yüksekliği)
   z0: number; z1: number; // gönderilen hacimde kesit indisleri
   score: number;
+  /** Yalnızca beyin protokolü: kanama alt tipi etiketi (worker'dan gelir) */
+  label?: string;
+  subtype?: string;
 }
 
 export interface DeepScanMeta {
@@ -23,8 +26,14 @@ export interface DeepScanMeta {
   scoreThresh: number;
 }
 
-const MAX_Z = 600;          // çok kalın serilerde z adımlama
+const MAX_Z = 600;          // çok kalın serilerde z adımlama (nodül modeli)
+const MAX_Z_HEAD = 300;      // beyin modeli CPU'da yavaş → maks 300 model kesiti (~15 dk)
 const MAX_VOXELS = 300_000_000; // ~600 MB int16 sınırı
+
+export type DeepProtocol = "ct-chest" | "ct-head";
+
+/** Protokole göre istemci zaman aşımı (ms). Beyin modeli CPU'da uzun sürer. */
+const timeoutFor = (p: DeepProtocol) => (p === "ct-head" ? 1_500_000 : 300_000);
 
 /** Derin AI için uygun değilse nedenini döndürür; uygunsa null. */
 export function deepScanEligible(s: SeriesData): string | null {
@@ -44,12 +53,12 @@ interface PackedVolume {
 }
 
 /** Seriyi HU hacmine paketler (gzip dahil). HU değilse null. */
-export async function packHuVolume(s: SeriesData): Promise<PackedVolume | null> {
+export async function packHuVolume(s: SeriesData, maxZ: number = MAX_Z): Promise<PackedVolume | null> {
   const Z = s.slices.length, Y = s.height, X = s.width;
   if (!Z || !Y || !X) return null;
   if (s.slices.some((sl) => sl.length !== Y * X)) return null; // boyut tutarsız
 
-  const zStep = Math.max(1, Math.ceil(Z / MAX_Z));
+  const zStep = Math.max(1, Math.ceil(Z / maxZ));
   const effZ = Math.ceil(Z / zStep);
   if (effZ * Y * X > MAX_VOXELS) return null;
 
@@ -85,25 +94,88 @@ export interface DeepScanOutput extends DeepScanMeta {
  * Seriyi yerel AI worker'a gönderir ve bbox'lı nodül adayı bulgularını döndürür.
  * Ağ hatası / worker kapalı ise fırlatır; çağıran akış devam eder.
  */
-export async function deepScan(s: SeriesData, signal?: AbortSignal): Promise<DeepScanOutput> {
-  const packed = await packHuVolume(s);
+export async function deepScan(s: SeriesData, signal?: AbortSignal, protocol: DeepProtocol = "ct-chest"): Promise<DeepScanOutput> {
+  const packed = await packHuVolume(s, protocol === "ct-head" ? MAX_Z_HEAD : MAX_Z);
   if (!packed) throw new Error("HU hacmi paketlenemedi (bellek/boyut sınırı)");
 
-  const res = await fetch("/api/deep-scan", {
+  const res = await fetch(`/api/deep-scan?protocol=${protocol}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/octet-stream",
       "X-Dims": packed.dims.join(","),
       "X-Spacing": packed.spacing.map((v) => v.toFixed(4)).join(","),
+      "X-Protocol": protocol,
     },
     body: packed.bytes.buffer as ArrayBuffer, // fflate taze tampon döndürür
-    signal: signal ?? AbortSignal.timeout(300_000),
+    signal: signal ?? AbortSignal.timeout(timeoutFor(protocol)),
   });
   const data = (await res.json().catch(() => null)) as { error?: string } & DeepScanMeta & { boxes?: DeepBox[] } | null;
   if (!res.ok || !data) throw new Error((data as { error?: string } | null)?.error ?? `yerel AI worker hatası (${res.status})`);
   const boxes = Array.isArray(data.boxes) ? data.boxes : [];
-  const findings = boxesToFindings(boxes, s, packed);
+  const findings = protocol === "ct-head"
+    ? brainBoxesToFindings(boxes, s, packed)
+    : boxesToFindings(boxes, s, packed);
   return { findings, elapsedMs: data.elapsedMs ?? 0, model: data.model ?? "MONAI lung_nodule_ct_detection", scoreThresh: data.scoreThresh ?? 0, submittedZ: packed.dims[0], zStep: packed.zStep };
+}
+
+const ICH_SUBTYPE_INFO: Record<string, { sev: string; note: string }> = {
+  epidural: { sev: "kritik", note: "dural venöz sinüs/damar yaralanması ile uyumlu yüksek basınçlı ekstravazasyon düşünülür" },
+  intraparenchymal: { sev: "kritik", note: "parankimal içinde doğrudan kanama; hipertansif kanama, damar tıkanıklığı veya travma ile uyumlu olabilir" },
+  intraventricular: { sev: "kritik", note: "ventriküllere kanama; hidrosefali riski nedeniyle acil değerlendirme gerektirir" },
+  subarachnoid: { sev: "kritik", note: "subaraknoid boşlukta kanama; anevrizmal kanama açısından acil araştırma gerekir" },
+  subdural: { sev: "yuksek", note: "subdural alanda kanama; geçirilmiş travma/venöz yırtılma ile uyumlu olabilir" },
+};
+
+/** Beyin (ICH) worker kutularını rapor bulgularına çevirir. */
+export function brainBoxesToFindings(boxes: DeepBox[], s: SeriesData, packed: PackedVolume): Finding[] {
+  const Z = s.slices.length, Y = s.height, X = s.width;
+  const [dz, dy, dx] = packed.spacing;
+  const zStep = packed.zStep;
+  const pos = s.slicePositions;
+
+  return boxes
+    .filter((b) => Number.isFinite(b.score) && b.score >= 0.30 && b.w > 0 && b.h > 0 && b.label)
+    .slice(0, 8)
+    .map((b, i) => {
+      const z0 = Math.max(0, Math.min(Z - 1, Math.round(b.z0) * zStep));
+      const z1 = Math.max(z0, Math.min(Z - 1, Math.round(b.z1) * zStep + (zStep - 1)));
+      const peak = Math.round((z0 + z1) / 2);
+      const wMm = b.w * X * dx;
+      const hMm = b.h * Y * dy;
+      const nSl = z1 - z0 + 1;
+      const zMm = nSl * dz;
+      const dia = Math.max(wMm, hMm);
+      const info = ICH_SUBTYPE_INFO[b.subtype ?? ""] ?? { sev: "yuksek", note: "lokalizasyon alt tipi belirsiz" };
+      const bbox: BBox = {
+        x: Math.max(0, Math.min(1, b.x)),
+        y: Math.max(0, Math.min(1, b.y)),
+        w: Math.max(0.004, Math.min(1 - b.x, b.w)),
+        h: Math.max(0.004, Math.min(1 - b.y, b.h)),
+      };
+      return {
+        id: `bh${i + 1}`,
+        sliceIndex: peak, sliceStart: z0, sliceEnd: z1, keySliceNumber: peak + 1,
+        sliceRangeStr: z0 === z1 ? `Kesit ${z0 + 1}` : `Kesit ${z0 + 1} – ${z1 + 1} (${nSl} kesitte)`,
+        zLocationMm: Number(((pos ? pos[peak] - pos[0] : (peak - Z / 2) * dz)).toFixed(1)),
+        anatomicalLocation: "Beyin (kutu konumu maske tahmini)",
+        densityOrSignal: `derin öğrenme skoru ${Math.round(b.score * 100)}/100`,
+        sizeMmStr: `≈ ${dia.toFixed(1)} mm (${wMm.toFixed(0)} × ${hMm.toFixed(0)} × ${zMm.toFixed(0)} mm)`,
+        bbox, label: b.label!,
+        detail:
+          `Yerel derin öğrenme modeli (ct-head-hemorrhage-detection, MIT/RSNA ICH) bu seride ${nSl} kesitlik bölgede ` +
+          `${b.label} için model skoru ${Math.round(b.score * 100)}/100 işaretledi (kalibre olasılık değil). Radyolojik yorumda ${info.note}. ` +
+          `Kesit aralığı: ${z0 + 1}–${z1 + 1}; odak boyutu ≈${dia.toFixed(1)} mm. ` +
+          `BULGU YAPAY ZEKA ÇIKTISIDIR VE RADYOLOJİ UZMANI TARAFINDAN ONAYLANMADAN GEÇERLİ DEĞİLDİR.`,
+        category: "Kanama", severity: info.sev as Finding["severity"],
+        confidence: Math.max(0, Math.min(1, b.score)),
+        confidenceKind: "heuristic" as const,
+        source: "ai-model" as const,
+        metrics: { maxDiameterMm: Number(dia.toFixed(1)), zExtentMm: Number(zMm.toFixed(1)) },
+      } satisfies Finding;
+    })
+    .filter((f, i, arr) =>
+      arr.findIndex((g) => g.sliceStart <= f.sliceEnd && g.sliceEnd >= f.sliceStart && iou(f.bbox!, g.bbox!) > 0.5) === i
+    );
 }
 
 const lungRadsFor = (dia: number) => (dia < 6 ? "2" : dia < 8 ? "3" : dia < 15 ? "4A" : "4B");

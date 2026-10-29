@@ -134,8 +134,12 @@ def resample_to_luna16(hu_zyx: np.ndarray, spacing_zyx) -> np.ndarray:
 
     Girdi: hu_zyx float32 (Z,Y,X), spacing_zyx (sz,sy,sx) mm.
     Çıktı: float32 (X',Y',Z') — model düzeni [X,Y,Z].
+
+    DİKKAT: sağlayıcılar her yerde (sz,sy,sx) sırasıyla gönderir; çözümleme de
+    bu sıraya uymalıdır. (Bu fonksiyon önce sx/sy/sz'yi karışık çözümlüyordu —
+    doğrulamada tüm GT'lerin 0 duyarlıkla kaçmasının nedeni buydu.)
     """
-    sx, sy, sz = float(spacing_zyx[1]), float(spacing_zyx[0]), float(spacing_zyx[2])
+    sz, sy, sx = float(spacing_zyx[0]), float(spacing_zyx[1]), float(spacing_zyx[2])
     # (Z,Y,X) -> (X,Y,Z)
     b = np.transpose(hu_zyx.astype(np.float32), (2, 1, 0))
     # LPS -> RAS: x ve y ekseni çevrilir (standital aksiyel DICOM varsayımı)
