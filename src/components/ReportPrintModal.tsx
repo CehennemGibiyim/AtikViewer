@@ -298,7 +298,15 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
     if (r.ok) { setAddText(""); void loadDetail(report.id); } else setError(((await r.json()) as { error?: string }).error ?? "Addendum eklenemedi");
   };
 
-  const images = report.keyImages.length > 0 ? report.keyImages.slice(0, 4).map((k) => ({ src: k.dataUrl, cap: `Kesit ${k.slice + 1}${k.note ? ` · ${k.note}` : ""}` })) : report.keyImageDataUrl ? [{ src: report.keyImageDataUrl, cap: "Anahtar kesit" }] : [];
+  const findingSlices = new Set(report.findings
+    .filter((f) => f.category !== "Sistem" && f.category !== "ROI" && f.category !== "Görüntü ölçümü" && f.bbox)
+    .map((f) => f.sliceIndex));
+  const evidenceImages = report.keyImages.filter((image) => findingSlices.has(image.slice));
+  const images = evidenceImages.length > 0
+    ? evidenceImages.slice(0, 4).map((k) => ({ src: k.dataUrl, cap: `Kesit ${k.slice + 1}${k.note ? ` · ${k.note}` : ""}` }))
+    : findingSlices.size === 0 && report.keyImages.length === 0 && report.keyImageDataUrl
+      ? [{ src: report.keyImageDataUrl, cap: "Anahtar kesit" }]
+      : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 backdrop-blur-sm sm:p-4 print:static print:z-auto print:bg-white print:p-0">
@@ -389,7 +397,7 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                       <ReportField name="Sonuç/İzlenim" rows={3} value={report.impression} editing={editing} onChange={(v) => set("impression", v)} onMic={append("impression")} onGotoSlice={onGotoSlice} onClose={onClose} />
                       <ReportField name="Öneri" rows={2} value={report.recommendation} editing={editing} onChange={(v) => set("recommendation", v)} onMic={append("recommendation")} onGotoSlice={onGotoSlice} onClose={onClose} />
                       {report.measurementsText && <div><div className="font-bold uppercase text-slate-900">Ölçümler</div><p className="mt-0.5 whitespace-pre-wrap font-mono text-[10.5px]">{report.measurementsText}</p></div>}
-                      <p className="mt-1 text-[10px] italic text-slate-500">{report.engine === "image-review" ? "Bu bölüm yalnızca gerçek piksellerden hesaplanan görüntü ölçümleridir; hastalık tanısı, normal sonuç veya acil triyaj değildir. Radyolog yorumu gerekir." : "Bu çıktı yapay zeka/kural tabanlı veya DEMO desteklidir; hekim doğrulaması gerekir."}</p>
+                      <p className="mt-1 text-[10px] italic text-slate-500">{report.engine === "image-review" ? "Bu protokol hastalık sınıflandırması yapmaz; kare başına piksel ölçümleri yazdırma raporuna dahil edilmemiştir. Görüntüler radyolog tarafından değerlendirilmelidir." : "Bu çıktı yapay zeka/kural tabanlı veya DEMO desteklidir; hekim doğrulaması gerekir."}</p>
                     </div>
                     <div className="flex flex-col items-center gap-2 md:col-span-4">
                       {images.length === 0 && <div className="flex h-40 w-full items-center justify-center rounded border border-dashed border-slate-300 text-[10px] text-slate-400">Anahtar kesit yok</div>}
@@ -405,13 +413,15 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                 </div>
 
                 <div className="mt-6">
-                  <h2 className="text-sm font-black uppercase tracking-wide text-[#0e7490]">{report.engine === "image-review" ? "Kesit/kare bazlı görüntü ölçümleri (tanısal bulgu değildir)" : "AI aday bulguları / DEMO ve hekim doğrulaması"}</h2>
+                  <h2 className="text-sm font-black uppercase tracking-wide text-[#0e7490]">{report.engine === "image-review" ? "Otomatik tanısal bulgu yok" : "AI aday bulguları / DEMO ve hekim doğrulaması"}</h2>
                   <div className="mt-1 h-0.5 w-full bg-slate-200" />
-                  <table className="mt-2 w-full border-collapse text-[11px]">
+                  {report.engine === "image-review" ? (
+                    <p className="mt-2 text-[11px] italic text-slate-600">Bu analiz yalnızca piksel dağılımı ölçtü; hastalık adayı üretmedi. Tanısal bulgular radyolog tarafından belirlenmelidir.</p>
+                  ) : <table className="mt-2 w-full border-collapse text-[11px]">
                     <thead><tr className="border-b border-slate-300 text-left font-bold text-slate-600"><th className="w-[22%] py-1.5 pr-2">Bulgu / konum</th><th className="w-[18%] py-1.5 pr-2">Kesit</th><th className="w-[40%] py-1.5 pr-2">Açıklama / ölçüm</th><th className="w-[20%] py-1.5 text-right">Radyolog</th></tr></thead>
                     <tbody>
                       {report.findings.length === 0 && <tr><td colSpan={4} className="py-2 italic text-slate-500">Bulgu kaydı yok.</td></tr>}
-                      {report.findings.map((f, i) => {
+                      {report.findings.filter((f) => report.engine !== "image-review" || (f.category !== "Görüntü ölçümü" && f.category !== "Sistem")).map((f, i) => {
                         const st = report.findingsApproval[f.id] ?? (approved ? "onaylandi" : "bekliyor");
                         return (
                           <tr key={f.id} className="border-b border-slate-200 align-top">
@@ -427,7 +437,7 @@ export default function ReportPrintModal({ open, onClose, report: initial, user,
                         );
                       })}
                     </tbody>
-                  </table>
+                  </table>}
                 </div>
 
                 {card && (

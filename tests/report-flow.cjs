@@ -42,8 +42,12 @@ async function main() {
     const side = page.locator('aside[aria-label="Seri listesi"]');
     const panel = page.locator('aside[aria-label="İnceleme paneli"]');
 
-    // ── 1) BT beyin: kural tabanlı analiz → rapor → onay kapıları ──
+    // Sentetik seriler yalnızca NEXT_PUBLIC_E2E_FIXTURES=true ile derlenen CI
+    // artifact'inde bulunur; normal uygulama ve GitHub Pages bundle'ında yoktur.
+    await side.getByText("Beyin BT (kontrastsız)", { exact: true }).waitFor({ timeout: 10000 });
     await side.getByText("Beyin BT (kontrastsız)", { exact: true }).click();
+
+    // ── 1) BT beyin: kural tabanlı analiz → rapor → onay kapıları ──
     await panel.getByRole("button", { name: /Analizi başlat/ }).click();
     await panel.getByText(/Kural tabanlı BT aday odakları|kesit işlendi/).first().waitFor({ timeout: 90000 });
 
@@ -77,7 +81,7 @@ async function main() {
 
     if (FULL) {
       await kilitle.click();
-      await modal.getByText(/ONAYLANDI/).waitFor({ timeout: 30000 });
+      await modal.locator('span.rounded-full').filter({ hasText: /^✓ ONAYLANDI/ }).first().waitFor({ timeout: 30000 });
       assert.match(await modal.innerText(), /KİLİTLİ/);
       assert.equal(await modal.getByRole("button", { name: "DICOM SR ⬇" }).isDisabled(), false, "onaydan sonra SR açılmalı");
       console.log("PASS Rapor onayı: bekleyen bulgu → tümü onay → onay ve kilit; SR/FHIR kilidi açıldı.");

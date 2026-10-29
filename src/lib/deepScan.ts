@@ -95,6 +95,13 @@ export interface DeepScanOutput extends DeepScanMeta {
  * Ağ hatası / worker kapalı ise fırlatır; çağıran akış devam eder.
  */
 export async function deepScan(s: SeriesData, signal?: AbortSignal, protocol: DeepProtocol = "ct-chest"): Promise<DeepScanOutput> {
+  // GitHub Pages (NEXT_PUBLIC_STATIC_DEMO) derlemesinde /api/* yoktur; tarayıcıda Python/
+  // MONAI worker'ı çalıştırılamaz. Hacmi boşuna sıkıştırmamak için en baştan net hata ver.
+  if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") {
+    throw new Error(
+      "statik web sürümünde yerel derin AI modeli çalışmaz — derin tarama için Windows (ai-worker) veya Docker/Render sürümünü kullanın",
+    );
+  }
   const packed = await packHuVolume(s, protocol === "ct-head" ? MAX_Z_HEAD : MAX_Z);
   if (!packed) throw new Error("HU hacmi paketlenemedi (bellek/boyut sınırı)");
 

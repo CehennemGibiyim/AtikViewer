@@ -37,3 +37,7 @@ npm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# İndirilen doğrulama kohortları ve DICOM/NIfTI önbellekleri (GB mertebesinde;
+# GitHub tek dosya sınırını aşar ve hasta türevi veri repo'ya girmez)
+ai-worker/data/

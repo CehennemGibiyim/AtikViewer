@@ -23,8 +23,8 @@ import { APP_BUILD } from "./ClientRecovery";
 import ImportReportDialog, { type ImportReport } from "./ImportReportDialog";
 import ExportImageDialog, { type ImageExport } from "./ExportImageDialog";
 import { loadWindowPresets, writePreference } from "@/lib/browserPreferences";
-import { assertNotAborted, withImportTimeout } from "@/lib/importOperation";
 import { SAMPLE_CASE_INFOS, buildSampleCase } from "@/lib/sampleCases";
+import { assertNotAborted, withImportTimeout } from "@/lib/importOperation";
 import { loadMedicalFiles, type ImportStats } from "@/lib/dicom";
 import { resolveProtocol, runEngine } from "@/lib/ai/engine";
 import { runImageReview } from "@/lib/ai/imageReview";
@@ -50,6 +50,8 @@ const GRID: Record<Layout, string> = {
   "2x3": "grid-cols-3 grid-rows-2",
   "3x2": "grid-cols-2 grid-rows-3",
 };
+
+const E2E_FIXTURES = process.env.NEXT_PUBLIC_E2E_FIXTURES === "true";
 
 const CT_PRESETS: WindowPreset[] = [
   { name: "Beyin", wl: 40, ww: 80 }, { name: "Akciğer", wl: -600, ww: 1500 }, { name: "Kemik", wl: 300, ww: 1500 },
@@ -149,17 +151,15 @@ function SeriesCard({ s, active, onClick }: { s: SeriesData; active: boolean; on
   );
 }
 
-const Btn = ({ on, onClick, children, title, disabled = false, tone = "cyan" }: { on?: boolean; onClick: () => void; children: React.ReactNode; title?: string; disabled?: boolean; tone?: "cyan" | "amber" | "emerald" | "violet" }) => {
+const Btn = ({ on, onClick, children, title, disabled = false, tone = "cyan", ...rest }: { on?: boolean; onClick: () => void; children: React.ReactNode; title?: string; disabled?: boolean; tone?: "cyan" | "amber" | "emerald" | "violet" } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
   const t = { cyan: "bg-cyan-400/15 text-cyan-300 ring-1 ring-cyan-400/50", amber: "bg-amber-400/15 text-amber-300 ring-1 ring-amber-400/40", emerald: "bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-400/40", violet: "bg-violet-400/15 text-violet-300 ring-1 ring-violet-400/40" }[tone];
-  return <button type="button" title={title} aria-pressed={on} disabled={disabled} onClick={onClick} className={`shrink-0 cursor-pointer rounded-md px-2.5 py-2 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 ${on ? t : "text-slate-300 hover:bg-[#161e2b]"}`}>{children}</button>;
+  return <button {...rest} type="button" title={title} aria-pressed={on} disabled={disabled} onClick={onClick} className={`shrink-0 cursor-pointer rounded-md px-2.5 py-2 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 ${on ? t : "text-slate-300 hover:bg-[#161e2b]"}`}>{children}</button>;
 };
 
 export default function Workstation({ user }: { user: UserInfo }) {
   // ───── Seriler ─────
-  const [samples, setSamples] = useState<SeriesData[]>([]);
-  const [samplesLoading, setSamplesLoading] = useState(true);
-  const [sampleFailures, setSampleFailures] = useState<string[]>([]);
   const [loaded, setLoaded] = useState<SeriesData[]>([]);
+  const [samples, setSamples] = useState<SeriesData[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ count: number; total: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -189,6 +189,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const [syncPanels, setSyncPanels] = useState(true);
   const [autoLayout, setAutoLayout] = useState(true);
   const [mpr, setMpr] = useState(false);
+  const [mprInitialTab, setMprInitialTab] = useState<"not" | "3b">("not");
   const [showOverlays, setShowOverlays] = useState(true);
   const [hangingModalOpen, setHangingModalOpen] = useState(false);
   const [showSeriesPanel, setShowSeriesPanel] = useState(true);
@@ -230,7 +231,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const [patientReports, setPatientReports] = useState<SavedReport[]>([]);
   const [priorStudies, setPriorStudies] = useState<StudyRow[]>([]);
 
-  const all = useMemo(() => [...loaded, ...samples], [loaded, samples]);
+  const all = useMemo(() => E2E_FIXTURES ? [...loaded, ...samples] : loaded, [loaded, samples]);
   const series = all.find((s) => s.id === activeId) ?? null;
   const isImageSeries = !!series && (!series.specialType || series.specialType === "image") && series.slices.length > 0;
   // DICOM SR kanıt listesi: anahtar kesitlerin SOP Instance UID'leri (yalnızca gerçek DICOM serilerinde)
@@ -286,40 +287,33 @@ export default function Workstation({ user }: { user: UserInfo }) {
   }, []);
 
   // ───── Başlangıç Yüklemeleri ─────
+  // Tercihler ve E2E düzlemleri bir sonraki tıka ertelenir: effect gövdesinde senkron
+  // setState çağırmak React 19'da ardışık render zincirine yol açar (react-hooks/set-state-in-effect).
   useEffect(() => {
-    void (async () => {
+    const boot = window.setTimeout(() => {
       setPresets(loadWindowPresets());
       if (window.innerWidth < 900) setShowRightPanel(false);
       if (window.innerWidth < 640) setShowSeriesPanel(false);
-    })();
-    let cancelled = false;
-    void (async () => {
-      const built: SeriesData[] = [];
-      const failed: string[] = [];
-      for (const info of SAMPLE_CASE_INFOS) {
-        // Her vaka ayrı turda: ağır bir örnek arayüzü bloke etmesin ve tek hata tüm listeyi sıfırlamasın.
-        await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        if (cancelled) return;
+      if (!E2E_FIXTURES) return;
+      const fixtures = SAMPLE_CASE_INFOS.flatMap((info) => {
         try {
-          const sample = buildSampleCase(info.id);
-          if (!sample) throw new Error("vaka üretilemedi");
-          built.push(sample);
-          setSamples([...built]);
-          if (built.length === 1) {
-            setActiveId(sample.id);
-            setSlice(Math.floor(sample.slices.length / 2));
-            setWl(sample.defaultWL);
-            setWw(sample.defaultWW);
-          }
+          const fixture = buildSampleCase(info.id);
+          return fixture ? [fixture] : [];
         } catch (error) {
-          console.error(`Örnek vaka açılamadı: ${info.id}`, error);
-          failed.push(`${info.title}: ${error instanceof Error ? error.message : "açılamadı"}`);
-          setSampleFailures([...failed]);
+          console.error(`E2E fixture açılamadı: ${info.id}`, error);
+          return [];
         }
+      });
+      setSamples(fixtures);
+      const initial = fixtures[0];
+      if (initial) {
+        setActiveId(initial.id);
+        setSlice(Math.floor(initial.slices.length / 2));
+        setWl(initial.defaultWL);
+        setWw(initial.defaultWW);
       }
-      if (!cancelled) setSamplesLoading(false);
-    })();
-    return () => { cancelled = true; };
+    }, 0);
+    return () => window.clearTimeout(boot);
   }, []);
 
   const resetView = useCallback((s: SeriesData) => {
@@ -380,11 +374,12 @@ export default function Workstation({ user }: { user: UserInfo }) {
     else toast("Otomatik düzen açık. Bir görüntü serisi seçildiğinde uygulanacak.");
   };
 
-  const requestMpr = () => {
+  const requestMpr = (initialTab: "not" | "3b" = "not") => {
     if (!series || !isImageSeries) { toast("MPR için önce çok kesitli bir BT veya MR görüntü serisi seçin."); return; }
     if (!["CT", "MR"].includes(series.modality) || series.isColor) { toast("MPR yalnızca gri tonlamalı, hacim oluşturan BT/MR serileri için kullanılabilir."); return; }
     if (series.slices.length < 3) { toast("MPR için aynı seride en az 3 kesit gerekir."); return; }
     setCine(false);
+    setMprInitialTab(initialTab);
     setMpr(true);
   };
 
@@ -648,7 +643,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
     if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") { toast("Statik demoda sunucu yok; dosyalar tarayıcınızdan dışarı çıkmaz. Sunucuya kaydetmek için tam sürümü (Docker/Render) kullanın."); return; }
     if (!series) { toast("Önce bir seri açın."); return; }
     if (savingFiles) return;
-    if (!series.files?.length) { toast("Örnek vakaların orijinal dosyası yok. Sunucuya kaydetmek için yerel DICOM dosyalarını açın."); return; }
+    if (!series.files?.length) { toast("Bu serinin orijinal DICOM dosyaları mevcut değil. Sunucuya kaydetmek için yerel DICOM dosyalarını açın."); return; }
     setSavingFiles(true);
     try {
       const id = await withImportTimeout(ensureStudy(series), undefined, 30000);
@@ -970,7 +965,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
     const top = result.findings.find((f) => f.category !== "Sistem" && f.category !== "ROI");
     if (top) { setSlice(top.sliceIndex); setActiveFinding(top.id); }
     // Otomatik anahtar kesit önerisi: bbox'lı, yüksek öncelikli bulgular (derin AI dahil)
-    suggestKeyImages(s, result.findings);
+    if (engine !== "image-review") suggestKeyImages(s, result.findings);
     void refreshContext();
   };
 
@@ -1087,7 +1082,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
       clinicalInfo: clinicalNote, findings: r?.findings ?? [], findingsApproval: approvals, engine,
       aiModel: r?.model ?? "Model bağlı değil", modelCard: JSON.stringify(r?.modelCard ?? modelCardFor("no-model")),
       triageLevel: r?.triage.level ?? "", triageScore: r?.triage.score ?? 0, approvedBy: "", doctorTitle: "", doctorRegNo: "", approvedAt: null,
-      keyImageDataUrl: renderSlice(s, slice, wl, ww, invert, 320).toDataURL("image/jpeg", 0.85), keyImages, measurementsText, createdAt: new Date().toISOString(),
+      keyImageDataUrl: "", keyImages, measurementsText, createdAt: new Date().toISOString(),
     };
   };
 
@@ -1249,8 +1244,11 @@ export default function Workstation({ user }: { user: UserInfo }) {
         <Btn on={syncPanels} tone="violet" onClick={() => { setSyncPanels((v) => !v); toast(syncPanels ? "Paneller arası kesit senkronu kapatıldı." : "Paneller arası kesit senkronu açıldı."); }} title="Paneller arası kesit senkronu (anatomik konuma göre)">
           Senkron
         </Btn>
-        <Btn onClick={requestMpr} title="Çok düzlemli yeniden kesit (axial/koronal/sagittal, MIP)">
+        <Btn onClick={() => requestMpr("not")} title="Çok düzlemli yeniden kesit: aksiyel, koronal, sagittal ve MIP">
           MPR
+        </Btn>
+        <Btn onClick={() => requestMpr("3b")} title="3B hacim görünümünü doğrudan aç (WebGL2 gerekir)" data-testid="open-3d-volume">
+          3B Hacim
         </Btn>
         <div className="mx-1 h-6 w-px shrink-0 bg-[#1e2735]" />
         <Btn onClick={exportPng} title="Geçerli kesiti PNG kaydet">PNG</Btn>
@@ -1311,16 +1309,15 @@ export default function Workstation({ user }: { user: UserInfo }) {
         {showSeriesPanel && <aside aria-label="Seri listesi" className="flex w-48 shrink-0 flex-col border-r border-[#1a2230] bg-[#0b0f16] print:hidden">
           <div className="flex items-center justify-between border-b border-[#1a2230] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
             <span>Seriler ({all.length})</span>
-            {loaded.length > 0 && <button onClick={() => { setLoaded([]); setRefIds([null, null, null, null, null]); if (series && !series.isSample && samples[0]) selectSeries(samples[0], samples); toast("Açılan dosyalar listeden kaldırıldı; sunucudaki kayıtlar silinmedi."); }} className="cursor-pointer text-[9.5px] normal-case text-rose-400 hover:underline">Temizle</button>}
+            {loaded.length > 0 && <button onClick={() => { setLoaded([]); setActiveId(null); setRefIds([null, null, null, null, null]); toast("Açılan dosyalar listeden kaldırıldı; sunucudaki kayıtlar silinmedi."); }} className="cursor-pointer text-[9.5px] normal-case text-rose-400 hover:underline">Temizle</button>}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {lastReport && <button type="button" onClick={() => setImportReport(lastReport)} className="mb-2 w-full rounded-lg border border-cyan-400/30 bg-cyan-400/5 px-2 py-1.5 text-left text-[10.5px] font-semibold text-cyan-200 hover:bg-cyan-400/10">Yükleme raporu: {lastReport.stats.total} dosya → {lastReport.stats.seriesOpened} seri</button>}
             {importWarnings.length > 0 && <details className="mb-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-2 text-[10px] text-amber-200"><summary className="cursor-pointer font-semibold">Yükleme uyarıları ({importWarnings.length})</summary><ul className="mt-1 space-y-1">{importWarnings.map((w, i) => <li key={i}>{w}</li>)}</ul></details>}
             {loaded.length > 0 && <div className="mb-1 px-1 text-[9px] font-bold uppercase tracking-widest text-emerald-400">Açılan ({loaded.length})</div>}
             {loaded.map((s) => <SeriesCard key={s.id} s={s} active={s.id === activeId || refIds.includes(s.id)} onClick={() => selectSeries(s)} />)}
-            <div className="mb-1 mt-3 flex items-center justify-between px-1 text-[9px] font-bold uppercase tracking-widest text-slate-400"><span>Örnek vakalar</span>{samplesLoading && <span className="animate-pulse text-cyan-400">yükleniyor…</span>}</div>
-            {sampleFailures.length > 0 && <details className="mb-2 rounded border border-amber-400/30 p-1.5 text-[9.5px] text-amber-200"><summary className="cursor-pointer">Açılamayan örnek ({sampleFailures.length})</summary>{sampleFailures.map((f) => <div key={f}>{f}</div>)}</details>}
-            {samples.map((s) => <SeriesCard key={s.id} s={s} active={s.id === activeId || refIds.includes(s.id)} onClick={() => selectSeries(s)} />)}
+            {E2E_FIXTURES && samples.map((s) => <SeriesCard key={s.id} s={s} active={s.id === activeId || refIds.includes(s.id)} onClick={() => selectSeries(s)} />)}
+            {all.length === 0 && <p className="px-1 py-3 text-center text-[10px] leading-relaxed text-slate-500">Henüz görüntü yüklenmedi. Hasta DICOM dosyası/klasörü açın veya çalışma listesinden bir inceleme seçin.</p>}
           </div>
           {series && series.slices.length > 1 && !series.specialType && (
             <div className="border-t border-[#1a2230] bg-[#080d14] p-3">
@@ -1411,7 +1408,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
 
       {activeReport && <ReportPrintModal open={reportOpen} onClose={() => setReportOpen(false)} report={activeReport} user={user} onSave={saveReport} onGotoSlice={(n) => setSlice(Math.max(0, n - 1))} srEvidence={srEvidence} />}
       <WorklistModal open={worklistOpen} onClose={() => setWorklistOpen(false)} user={user} onOpenStudy={(s) => void openStored(s)} onOpenPacs={(s) => void openPacs(s)} />
-      {mpr && series && <div className="fixed inset-0 z-50 bg-[#070a0f]"><ViewerErrorBoundary resetKey={series.id} label="MPR" onClose={() => setMpr(false)}><VolumeView series={series} wl={wl} ww={ww} invert={invert} onClose={() => setMpr(false)} /></ViewerErrorBoundary></div>}
+      {mpr && series && <div className="fixed inset-0 z-50 bg-[#070a0f]"><ViewerErrorBoundary resetKey={series.id} label="MPR" onClose={() => setMpr(false)}><VolumeView series={series} wl={wl} ww={ww} invert={invert} initialTab={mprInitialTab} onClose={() => setMpr(false)} /></ViewerErrorBoundary></div>}
       {noduleOpen && series && <NoduleTracker patientId={series.patientId} patientName={series.patientName} studyDate={series.studyDate} measurements={noduleMeasurements} onClose={() => setNoduleOpen(false)} />}
       {pngImage && <ExportImageDialog image={pngImage} onClose={closePng} />}
       {importReport && <ImportReportDialog report={importReport} onClose={closeImportReport} />}

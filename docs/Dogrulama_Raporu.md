@@ -38,8 +38,10 @@
   performansını **temsil etmez** ve klinik doğrulama yerine geçmez.
 - Üretim arayüzündeki derin tarama eşiği 0.30'dur; tarama tablosu düşük eşiklerde
   duyarlılık/artan FP trade-off'unu gösterir.
-- Klinik doğrulama: gerçek ground-truth'lu hasta seti (ör. LUNA16 kohortu,
-  publicly-available ICH setleri) ile aynı tablo üretilmeli ve radyoloji uzmanı
-  tarafından değerlendirilmelidir.
+- **Klinik doğrulama (gerçek ground-truth) tamamlandı** ve bu raporun yerini alır:
+  [Klinik_Dogrulama_LUNA16.md](Klinik_Dogrulama_LUNA16.md) (LUNA16/LIDC nodül kohortu) ve
+  [Klinik_Dogrulama_ICH.md](Klinik_Dogrulama_ICH.md) (Zenodo RHUH SAH, uzman maskeli).
+  Yukarıdaki fantom sayıları yalnızca altyapı testidir; klinik değerlendirme için bu iki
+  rapora bakın ve radyoloji uzmanı tarafından değerlendirilin.
 - Bulgular 'aday' niteliğindedir; rapor onayı her koşulda radyoloji uzmanına aittir.
 - Yeniden üretim: `python ai-worker/validate.py`

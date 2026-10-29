@@ -39,10 +39,11 @@ async function main() {
 
     await panel.getByRole("button", { name: "Rapor", exact: true }).click();
     const reportText = await panel.innerText();
-    assert.match(reportText, /Kare 1:/);
-    assert.match(reportText, /Kare 12:/);
-    assert.match(reportText, /TANISAL DEĞİL|klinik triyaj sonucu olarak yorumlanamaz/);
-    console.log("PASS US raporu: kare 1–12 numaralı ölçümler yer alıyor; tanısal olmadığı belirtiliyor.");
+    assert.doesNotMatch(reportText, /Kare 1:|Kare 12:|KARE\/KESİT BAZLI GÖRÜNTÜ ÖLÇÜMLERİ/,
+      "tanısal olmayan tüm kare istatistikleri rapor metnine dökülmemeli");
+    assert.match(reportText, /dedektörü DEĞİLDİR|klinik izlenim radyolog tarafından yazılmalıdır/,
+      "rapor, ölçümlerin tanısal olmadığını belirten uyarıyı korumalıdır");
+    console.log("PASS US raporu: kare ölçümleri çıktı metninden çıkarıldı; tanısal olmadığı belirtiliyor.");
 
     await side.getByText("Akciğer Grafisi PA", { exact: true }).click();
     await panel.getByRole("button", { name: "Vision AI", exact: true }).click();
@@ -50,7 +51,18 @@ async function main() {
     await panel.getByRole("button", { name: /Görüntü incelemesini başlat/ }).click();
     await panel.getByRole("region", { name: "Kesit bazlı görüntü ölçümleri" }).waitFor({ timeout: 30000 });
     assert.equal(await panel.locator('section[aria-label="Kesit bazlı görüntü ölçümleri"] tbody tr').count(), 1);
-    console.log("PASS CR tek kare: zorunlu hastalık etiketlemeden görüntü ölçümü yapılabiliyor.");
+    await panel.getByRole("button", { name: "Rapor", exact: true }).click();
+    assert.doesNotMatch(await panel.innerText(), /Kesit 1: ortalama|TEMSİLÎ KARE\/KESİT GÖRÜNTÜ ÖLÇÜMLERİ/);
+    // Yazdırma kâğıdı: aday bulgu kutusu olmayan ölçüm kesitleri basılmaz.
+    await panel.getByRole("button", { name: "Vision AI", exact: true }).click();
+    await panel.getByRole("button", { name: /Raporu aç/ }).first().click();
+    const modal = page.locator("div.fixed.inset-0").filter({ hasText: "Radyoloji raporu" }).first();
+    await modal.waitFor();
+    assert.equal(await modal.locator("#report-paper img").count(), 0, "aday kutusu olmayan ölçüm karesi yazdırılmamalı");
+    assert.doesNotMatch(await modal.innerText(), /KARE\/KESİT BAZLI GÖRÜNTÜ ÖLÇÜMLERİ|Kesit 1: ortalama/);
+    await modal.getByRole("button", { name: "✕" }).first().click();
+    await modal.waitFor({ state: "detached" });
+    console.log("PASS CR tek kare: görüntü ölçümü panelde mevcut, rapor metnine/yazdırmaya eklenmiyor.");
 
     await side.getByText("Beyin BT (kontrastsız)", { exact: true }).click();
     await panel.getByRole("button", { name: /Analizi başlat/ }).click();

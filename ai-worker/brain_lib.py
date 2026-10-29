@@ -79,7 +79,10 @@ def get_model():
             )
         import ich_inference  # ağırlık yükleme sırasında import (ağır modüller)
 
-        model = ich_inference.HemorrhageSliceModel(local_dir=CACHE_DIR, device="cpu")
+        # Cihaz: varsayılan CPU (üretim); ATIK_ICH_DEVICE=cuda ile GPU kullanılır
+        # (doğrulama gibi uzun toplu çalıştırmalar için).
+        device = os.environ.get("ATIK_ICH_DEVICE", "cpu")
+        model = ich_inference.HemorrhageSliceModel(local_dir=CACHE_DIR, device=device)
         _state["model"] = model
         return model
 
@@ -144,12 +147,15 @@ def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
     return [(a, b) for a, b in runs]
 
 
-def run_brain_inference(hu_zyx: np.ndarray) -> dict:
+def run_brain_inference(hu_zyx: np.ndarray, include_slice_probs: bool = False) -> dict:
     """(Z,Y,X) HU hacmi üzerinde ICH çıkarımı; /infer ile aynı kutu şemasını döndürür.
 
     İki aşamalı (CPU-pratik):
       1) Tüm kesitlerde yalnızca sınıflandırma (maske yok) — maliyetin %90'ı burada.
       2) Pozitif aralıkların tepe kesitlerinde maske çıkarımı — kutu konumlanması.
+
+    include_slice_probs=True ile (yalnızca doğrulama/araç amaçlı; üretim yanıtı
+    küçük tutmak için varsayılan False) kesit bazlı olasılıklar (Z×6) eklenir.
     """
     model = get_model()
     Z, Y, X = hu_zyx.shape
@@ -235,7 +241,7 @@ def run_brain_inference(hu_zyx: np.ndarray) -> dict:
         if not overlap:
             deduped.append(b)
 
-    return {
+    result = {
         "boxes": deduped[:15],
         "series": series_probs,
         "slicePeaks": {name: float(slice_probs[:, i].max()) for i, name in enumerate(CLASS_NAMES)},
@@ -245,3 +251,7 @@ def run_brain_inference(hu_zyx: np.ndarray) -> dict:
         "protocol": "ct-head",
         "slices": Z,
     }
+    if include_slice_probs:
+        # Doğrulama modu: eşik taraması için kesit×sınıf olasılık matrisi (Z,6).
+        result["sliceProbs"] = [[round(float(v), 5) for v in row] for row in slice_probs]
+    return result

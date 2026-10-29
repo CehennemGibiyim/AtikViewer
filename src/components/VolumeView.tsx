@@ -170,10 +170,11 @@ interface Props {
   wl: number;
   ww: number;
   invert: boolean;
+  initialTab?: "not" | "3b";
   onClose: () => void;
 }
 
-export default function VolumeView({ series, wl: wl0, ww: ww0, invert, onClose }: Props) {
+export default function VolumeView({ series, wl: wl0, ww: ww0, invert, initialTab = "not", onClose }: Props) {
   const N = series.slices.length;
   const W = series.width;
   const H = series.height;
@@ -184,7 +185,7 @@ export default function VolumeView({ series, wl: wl0, ww: ww0, invert, onClose }
   const [mode, setMode] = useState<Mode>("single");
   const [wl, setWl] = useState(wl0);
   const [ww, setWw] = useState(ww0);
-  const [tab, setTab] = useState<"not" | "oblik" | "3b">("not");
+  const [tab, setTab] = useState<"not" | "oblik" | "3b">(initialTab);
   const [big, setBig] = useState(false);
 
   const m: Mode = slab === 0 ? "single" : mode === "single" ? "avg" : mode;
@@ -200,7 +201,7 @@ export default function VolumeView({ series, wl: wl0, ww: ww0, invert, onClose }
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#05070a]">
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[#1a2230] bg-[#0b0f16] px-3 py-2 text-xs">
-        <span className="font-mono font-black tracking-widest text-cyan-300">MPR · {series.description}</span>
+        <span className="font-mono font-black tracking-widest text-cyan-300">{tab === "3b" ? "3B HACİM" : "MPR"} · {series.description}</span>
         <span className="font-mono text-slate-400">x {cur.x} · y {cur.y} · kesit {cur.z + 1}/{N} · z {zMm.toFixed(1)} mm · değer {val !== undefined ? val.toFixed(0) : "—"} {series.unit}</span>
         <div className="ml-auto flex items-center gap-2">
           <label className="flex items-center gap-1 text-slate-300">Kalın kesit

@@ -74,6 +74,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app_db
       NEXT_TELEMETRY_DISABLED: 1
       PORT: 3000
+      # Test-only synthetic series are compiled into this UI-test artifact only.
+      NEXT_PUBLIC_E2E_FIXTURES: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -104,7 +106,7 @@ jobs:
           done
           echo "sunucu 120 sn içinde hazır olmadı"; tail -50 server.log; exit 1
 
-      - name: Menü etkileşim testleri (15 kontrol)
+      - name: Menü etkileşim testleri (16 kontrol)
         run: node tests/menu-interactions.cjs
 
       - name: Klasör içe aktarma testleri (3 kontrol)

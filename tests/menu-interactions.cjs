@@ -56,7 +56,7 @@ async function main() {
     await check("1280px: tüm üst menü ekrana sığıyor", async () => {
       const g = await page.locator('header[aria-label="Ana işlemler"]').evaluate((el) => ({ client: el.clientWidth, scroll: el.scrollWidth }));
       assert(g.scroll <= g.client + 2, JSON.stringify(g));
-      for (const name of ["MPR", "PNG", "Oto-düzen"]) {
+      for (const name of ["MPR", "3B Hacim", "PNG", "Oto-düzen"]) {
         const box = await page.getByRole("button", { name, exact: true }).boundingBox();
         assert(box && box.x >= 0 && box.x + box.width <= 1282, `${name} ekran dışında`);
       }
@@ -106,6 +106,15 @@ async function main() {
       assert.equal(await button.getAttribute("aria-pressed"), "true");
       assert.equal(await page.getByLabel("Izgara düzeni").inputValue(), "1x2");
       assert.equal(await page.getByTestId("reference-panel").count(), 1);
+    });
+
+    await check("3B Hacim menüsü: üç boyutlu VR görünümü doğrudan açılır ve Escape ile kapanır", async () => {
+      await page.getByTestId("open-3d-volume").click();
+      await page.getByText(/3B HACİM ·/).waitFor();
+      await page.getByRole("button", { name: "VR", exact: true }).waitFor();
+      await page.getByTestId("vr-canvas").waitFor();
+      await page.keyboard.press("Escape");
+      await page.getByText(/3B HACİM ·/).waitFor({ state: "detached" });
     });
 
     await check("MPR: üç düzlem açılır ve Escape ile kapanır", async () => {

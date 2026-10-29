@@ -135,7 +135,10 @@ export function buildAnalysis(body: AnalyzeBody): AnalyzeOutcome {
   const topRange = top ? top.sliceRangeStr : "";
   const differentials = engine === "no-model" || engine === "image-review" || !top ? [] : differentialsFor(top.category, topRange);
 
-  let findingsText = findings
+  const reportFindings = engine === "image-review"
+    ? findings.filter((f) => f.category !== "Görüntü ölçümü" && f.category !== "Sistem")
+    : findings.filter((f) => f.category !== "Görüntü ölçümü");
+  const findingsText = reportFindings
     .map((f, i) => {
       const loc = `[${f.sliceRangeStr}${f.category === "Sistem" ? "" : `, anahtar kesit ${f.keySliceNumber}`}${f.zLocationMm !== undefined ? `, z ${f.zLocationMm > 0 ? "+" : ""}${f.zLocationMm} mm` : ""}]`;
       const conf = fmtConf(f);
@@ -143,16 +146,8 @@ export function buildAnalysis(body: AnalyzeBody): AnalyzeOutcome {
       return `${i + 1}. ${f.label} ${loc}:\n   ${f.detail}${metric ? `\n  ${metric}` : ""}`;
     })
     .join("\n\n");
-  if (body.review?.frames.length) {
-    const frameLabel = ["US", "XA", "RF", "XC"].includes(meta.modality.toUpperCase()) ? "Kare" : "Kesit";
-    const lines = body.review.frames.slice(0, 2000).map((f) =>
-      body.review?.mode === "color"
-        ? `${frameLabel} ${f.sliceIndex + 1}: kırmızı RGB alanı %${f.redCoverage ?? 0}, mavi RGB alanı %${f.blueCoverage ?? 0}, toplam renkli alan %${f.colorCoverage ?? 0}; ortalama ${f.mean}, SS ${f.std}.`
-        : `${frameLabel} ${f.sliceIndex + 1}: ortalama ${f.mean}, SS ${f.std}, %2–%98 kontrast aralığı ${f.contrast}, önceki kesite göre istatistiksel değişim %${f.changeFromPrevious}.`
-    );
-    findingsText += `\n\nKARE/KESİT BAZLI GÖRÜNTÜ ÖLÇÜMLERİ (TANISAL DEĞİL)\n${lines.join("\n")}`;
-    if (body.review.frames.length > lines.length) findingsText += `\nKalan ${body.review.frames.length - lines.length} kare yalnızca arayüzde listelenir (rapor metni sınırı).`;
-  }
+  // Kare/kesit başına piksel istatistikleri ölçüm panelinde kalır; rapor metnine
+  // yalnızca hastalık adayı bulgular girer. image-review tanı sınıflandırıcısı değildir.
 
   const impression = engine === "image-review"
     ? `${body.review?.frameCount ?? meta.sliceCount} karede nicel görüntü ölçümü yapıldı. Bu ölçümler patoloji var/yok, normal inceleme veya acil triyaj sonucu olarak yorumlanamaz; klinik izlenim radyolog tarafından yazılmalıdır.`
@@ -183,7 +178,7 @@ export function buildAnalysis(body: AnalyzeBody): AnalyzeOutcome {
   const card = modelCardFor(engine);
   const result: AnalysisResult = {
     findings,
-    ...((engine === "image-review" || engine === "simulated-sample") && body.review ? { review: body.review } : {}),
+    ...(body.review ? { review: body.review } : {}),
     triage, differentials, patientSummary,
     technique: techniqueFor(meta, engine),
     qualityNote: engine === "image-review"
