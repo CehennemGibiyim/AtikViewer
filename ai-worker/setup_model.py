@@ -3,7 +3,10 @@
 Kullanım:
     python ai-worker/setup_model.py
 
-Dosyalar ATIK_MODEL_DIR (varsayılan ~/.cache/atikviewer-ai/model) altına iner:
+İkinci modeli de indirir: BT beyin ICH (ianpan/ct-head-hemorrhage-detection, MIT,
+≈147 MB) → ~/.cache/atikviewer-ai/brain (ai-worker/brain_lib için zorunlu).
+
+Akciğer dosyaları ATIK_MODEL_DIR (varsayılan ~/.cache/atikviewer-ai/model) altına iner:
     model.pt            (≈84 MB, LUNA16 eğitimi RetinaNet+ResNet50-3D)
     inference.json      (bundle ön işleme/yapılandırma — model_lib ile birebir)
     metadata.json
@@ -30,6 +33,21 @@ MODEL_DIR = os.environ.get(
     os.path.join(os.path.expanduser("~"), ".cache", "atikviewer-ai", "model"),
 )
 
+# ── İkinci model: BT beyin ICH (ianpan/ct-head-hemorrhage-detection, MIT) ──
+# Yol brain_lib.CACHE_DIR ile birebir aynı olmalıdır; dosya listesi ve boyutları
+# HuggingFace deposundaki LFS boyutlarıyla doğrulanmıştır (7 dosya, ≈147 MB).
+BRAIN_REPO = "ianpan/ct-head-hemorrhage-detection"
+BRAIN_DIR = os.path.join(os.path.expanduser("~"), ".cache", "atikviewer-ai", "brain")
+BRAIN_FILES = [
+    ("classifier/model.safetensors", 122_429_448),
+    ("sequence/model.safetensors", 11_098_536),
+    ("segmentation/fold0.safetensors", 5_498_088),
+    ("segmentation/fold1.safetensors", 5_498_088),
+    ("segmentation/fold2.safetensors", 5_498_088),
+    ("segmentation/fold3.safetensors", 5_498_088),
+    ("segmentation/fold4.safetensors", 5_498_088),
+]
+
 # (uzak yol, yerel ad, beklenen bayt; None ise boyut kontrolü yapılmaz)
 FILES = [
     ("models/model.pt", "model.pt", 83709381),
@@ -49,6 +67,47 @@ def download(url: str, dest: str) -> None:
     print(f"  indiriliyor: {url}", flush=True)
     urllib.request.urlretrieve(url, tmp)
     os.replace(tmp, dest)
+
+
+def setup_brain() -> int:
+    """BT beyin ICH ağırlıklarını indirir (idempotent).
+
+    Mevcut ve boyutu doğrulanmış dosyalar atlanır; hatalı boyutlu dosya önce
+    silinir. huggingface_hub gereklidir (requirements.txt) — yalnızca indirme
+    anında import edilir ki akciğer paketi tek başına da çalışabilsin.
+    Eksik/hatalı dosya sayısını döndürür (0 = tamam).
+    """
+    os.makedirs(BRAIN_DIR, exist_ok=True)
+    missing = 0
+    for remote, size in BRAIN_FILES:
+        dest = os.path.join(BRAIN_DIR, *remote.split("/"))
+        if os.path.isfile(dest):
+            actual = os.path.getsize(dest)
+            if actual == size:
+                print(f"  atlandı (mevcut): {remote} ({actual} bayt)", flush=True)
+                continue
+            print(f"  boyut uyuşmuyor ({actual} != {size}), yeniden indiriliyor: {remote}", flush=True)
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+        try:
+            from huggingface_hub import hf_hub_download
+
+            hf_hub_download(repo_id=BRAIN_REPO, filename=remote, local_dir=BRAIN_DIR)
+        except Exception as e:  # noqa: BLE001
+            print(f"  HATA: {remote} indirilemedi: {e}", file=sys.stderr, flush=True)
+            missing += 1
+            continue
+        if not os.path.isfile(dest) or os.path.getsize(dest) != size:
+            print(f"  HATA: {remote} boyutu tutmuyor", file=sys.stderr, flush=True)
+            missing += 1
+
+    if missing:
+        print(f"Beyin modeli: {missing} dosya eksik/hatalı.", file=sys.stderr, flush=True)
+    else:
+        print(f"Beyin modeli hazır: {BRAIN_DIR}", flush=True)
+    return missing
 
 
 def main() -> int:
@@ -86,7 +145,9 @@ def main() -> int:
             h.update(chunk)
     print(f"Tamam. model.pt sha256={h.hexdigest()}", flush=True)
     print(f"Model dizini: {MODEL_DIR}", flush=True)
-    return 0
+
+    # İkinci model: BT beyin ICH ağırlıkları (ai-worker/brain_lib kullanır)
+    return 1 if setup_brain() else 0
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ PostgreSQL (Drizzle ORM) tabanlı bir radyoloji iş istasyonudur.
   kullanılmaz. Klinik doğrulanmamıştır; her bulgu radyoloji uzmanı onayı gerektirir.**
 - **Raporlama:** taslak → onay akışı, bulgu bazlı hekim doğrulaması, sürümleme,
   addendum, A4 yazdırma, FHIR R4 DiagnosticReport dışa aktarma
-- **İş akışı:** çalışma listesi, PACS (DICOMweb QIDO/WADO), HBYS istem alımı,
+- **İş akışı:** çalışma listesi, PACS (DICOMweb QIDO/WADO — hazır sistem ayarları, şifreli kimlik, bağlantı testi), HBYS istem alımı,
   kritik bulgu bildirimleri, şifreli sunucu depolaması, hash zincirli denetim kaydı
 
 ## Hızlı başlangıç (Docker Compose — önerilen)
@@ -66,9 +66,18 @@ npm run build
 npm start
 ```
 
-> **Windows:** adım adım kurulum, gerekli paketler (Node, Python, PostgreSQL, CUDA),
-> derin AI worker kurulumu ve **sık karşılaşılan hataların çözümleri** için
-> **[docs/WINDOWS_KURULUM.md](docs/WINDOWS_KURULUM.md)**. Özet:
+> **Windows — tek komutla kurulum (önerilen):** betik önkoşulları (Git, Node.js,
+> Python), yapay zekâ paketlerini (`ai-worker/requirements.txt`) ve modelleri
+> (akciğer ≈84 MB + beyin ≈147 MB) kendisi kurar:
+>
+> ```bat
+> windows\Kurulum.bat     :: kurulum (ilk seferde PyTorch ≈2 GB iner)
+> windows\Baslat.bat      :: AI worker + görüntüleyici + tarayıcı
+> windows\Dur.bat         :: çalışırken kapat
+> ```
+>
+> Elle kurulum, PostgreSQL (opsiyonel), CUDA ve **sık karşılaşılan hataların
+> çözümleri** için **[docs/WINDOWS_KURULUM.md](docs/WINDOWS_KURULUM.md)**:
 >
 > ```powershell
 > git clone https://github.com/CehennemGibiyim/AtikViewer.git
@@ -85,13 +94,16 @@ Derin öğrenme çıkarımı ayrı bir yerel süreçte çalışır (Next.js'ten 
 yalnızca `127.0.0.1:8787`):
 
 ```bash
-# Python 3.11–3.13 + (tercihen) CUDA'lı torch
-python -m venv .venv && .venv/Scripts/pip install torch monai numpy
-python ai-worker/setup_model.py     # MONAI bundle modelini indirir (~84 MB, Apache-2.0)
+# Python 3.11–3.14 + (tercihen) CUDA'lı torch
+python -m venv .venv
+.venv/Scripts/pip install -r ai-worker/requirements.txt   # torch, monai, cv2, skp…
+python ai-worker/setup_model.py     # iki modeli indirir: akciğer ≈84 MB + beyin ≈147 MB
 python ai-worker/server.py          # worker'ı başlatır (CPU'da da çalışır, yavaş olur)
 ```
 
-- Model: `~/.cache/atikviewer-ai/model/model.pt` (`ATIK_MODEL_DIR` ile değiştirilebilir).
+- Windows'ta tüm bu adımları betik yapar: `windows\Kurulum.bat` (bkz. docs/WINDOWS_KURULUM.md §0).
+- Akciğer modeli: `~/.cache/atikviewer-ai/model/model.pt` (`ATIK_MODEL_DIR` ile değiştirilebilir).
+- Beyin (ICH) modeli: `~/.cache/atikviewer-ai/brain` (7 × `.safetensors`, MIT/RSNA).
 - Durum: `GET /api/deep-scan` → `{"worker":"up"|"down", ...}`
 - Uygulama içinde BT toraks analizi otomatik olarak bu uca gider; worker kapalıysa
   kural tabanlı motor devam eder ve uyarı satırı gösterilir.
@@ -103,7 +115,7 @@ python ai-worker/server.py          # worker'ı başlatır (CPU'da da çalışı
 |---|---|---|
 | `DATABASE_URL` | Evet | PostgreSQL bağlantı dizesi |
 | `DATA_ENCRYPTION_KEY` | Üretimde | Base64, 32 bayt AES-256 anahtarı (boşsa `.data/enc.key` üretilir) |
-| `PACS_AUTH_HEADER` | Hayır | DICOMweb kimlik başlığı (örn. `Basic …`) |
+| `PACS_AUTH_HEADER` | Hayır | DICOMweb kimlik başlığı — yalnızca geriye dönük; kimlik/ayarlar Yönetim → Entegrasyon'dan girilir ve sunucuda şifrelenir |
 | `HIS_API_KEY` | Hayır | HBYS istem alımı API anahtarı |
 | `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL` | Hayır | Taslak izlenim LLM'i (yoksa kural tabanlı yedek). Ücretsiz yerel yol: [docs/OLLAMA.md](docs/OLLAMA.md) |
 | `AI_WORKER_URL` | Hayır | Yerel derin AI worker adresi (varsayılan `http://127.0.0.1:8787`) |

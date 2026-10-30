@@ -9,6 +9,39 @@ Aşağıdaki komutlar **PowerShell** içindir. `cmd.exe` kullanıyorsanız farkl
 
 ---
 
+## 0. Tek komutla otomatik kurulum (önerilen)
+
+Aşağıdaki tüm adımları **betik kendisi yapar**: önkoşul kontrolü (Git, Node.js,
+Python), Python paket kurulumu (`ai-worker\requirements.txt`), yapay zekâ model
+indirme (akciğer + beyin), Node bağımlılıkları ve `.env` üretimi.
+
+```bat
+windows\Kurulum.bat     :: çift tıklamayla kurulum (ilk seferde PyTorch ≈2 GB iner)
+windows\Baslat.bat      :: AI worker + görüntüleyici + tarayıcı açılır
+windows\Dur.bat         :: çalışan süreçleri kapatır
+```
+
+PowerShell'den seçenekli çalıştırmak için:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File windows\Kurulum.ps1            # tam kurulum
+powershell -ExecutionPolicy Bypass -File windows\Kurulum.ps1 -CpuTorch   # yalnız CPU torch (≈250 MB)
+powershell -ExecutionPolicy Bypass -File windows\Kurulum.ps1 -Build      # + üretim derlemesi
+powershell -ExecutionPolicy Bypass -File windows\Baslat.ps1 -Dev         # geliştirme sunucusuyla başlat
+```
+
+| Betik | Ne yapar |
+|---|---|
+| `windows\Kurulum.ps1` | Önkoşulları winget ile kurar, `.venv` oluşturur, `requirements.txt` paketlerini kurar, modelleri indirir, `npm ci` çalıştırır, `.env` üretir. Idempotent; yeniden çalıştırmak güvenlidir. Kayıt: `windows\kurulum.log` |
+| `windows\Baslat.ps1` | Worker (8787) + görüntüleyici (3000) başlatır, sağlık denetimi yapar, tarayıcıyı açar. Zaten çalışanı ikinci kez başlatmaz. |
+| `windows\Dur.bat` | 8787/3000 portlarındaki süreçleri kapatır. |
+
+> **PostgreSQL notu:** betik PostgreSQL **kurmaz**. Veritabanı olmadan görüntüleyici,
+> ölçüm ve **yapay zekâ analizi** çalışır; yalnızca kalıcı özellikler (çalışma listesi,
+sunucuya kaydetme, kayıtlı rapor, denetim kaydı) çalışmaz. Onlar için §3'e bakın.
+
+---
+
 ## 1. Gereken paketler
 
 | Paket | Sürüm | Neden gerekli | Doğrulama |
@@ -125,13 +158,18 @@ Derin öğrenme çıkarımı ayrı bir yerel süreçte çalışır: `127.0.0.1:8
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # PowerShell etkinleştirme betiği
 
-# CPU sürümü (her makinede çalışır, yavaştır):
-pip install torch monai numpy
+# Tüm bağımlılıklar tek dosyadan (torch, monai, opencv, nibabel, skp — hepsi
+# requirements.txt'de tanımlıdır; skp git deposundan kendisi çözülür):
+pip install -r ai-worker\requirements.txt
 
-# — VEYA — NVIDIA GPU varsa CUDA sürümü (önerilen, ~10× hızlı):
+# — VEYA — NVIDIA GPU varsa CUDA sürümü (önerilen, ~10× hızlı) önce kurulur:
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-pip install monai numpy
+pip install -r ai-worker\requirements.txt
 ```
+
+> `ai-worker\requirements.txt` PyTorch, MONAI, OpenCV, nibabel, safetensors ve
+> BT beyin modeli kodunu (`skp`, MIT) — PyPI'da olmadığı için sabitlenmiş git
+> deposundan — içermektedir. **Git kurulu olmalıdır.**
 
 > **cmd.exe** içinde `.venv\Scripts\activate` kullanın (`.ps1` değil).
 >
@@ -150,9 +188,15 @@ pip install monai numpy
 python ai-worker/setup_model.py
 ```
 
-≈84 MB'lık MONAI `lung_nodule_ct_detection` bundle'ı (LUNA16 eğitimi, Apache-2.0)
-`%USERPROFILE%\.cache\atikviewer-ai\model` altına iner; boyut + SHA-256 doğrulanır,
-mevcut dosyalar atlanır (tekrar çalıştırması güvenlidir).
+Bu komut **iki modeli birden** indirir:
+
+| Model | Lisans | Boyut | Hedef |
+|---|---|---|---|
+| MONAI `lung_nodule_ct_detection` (BT toraks nodül) | Apache-2.0 | ≈84 MB | `%USERPROFILE%\.cache\atikviewer-ai\model` — boyut + SHA-256 doğrulanır |
+| `ianpan/ct-head-hemorrhage-detection` (BT beyin ICH) | MIT | ≈147 MB (7 dosya) | `%USERPROFILE%\.cache\atikviewer-ai\brain` — boyutla doğrulanır |
+
+Mevcut dosyalar atlanır; **tekrar çalıştırması güvenlidir** (idempotent) ve
+eksik dosyalar kaldığı yerden tamamlanır.
 
 ### 4.3 Worker'ı başlatma
 

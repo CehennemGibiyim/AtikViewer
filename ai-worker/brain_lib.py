@@ -52,11 +52,19 @@ _state = {"model": None, "loadError": None}
 
 
 def model_files_ready() -> bool:
-    """Ağırlıklar yerelde mevcut mu? (setup/indirme tamamlanmış mı)"""
+    """Ağırlıklar yerelde mevcut mu? (setup/indirme tamamlanmış mı)
+
+    ich_inference.HemorrhageSliceModel beş segmentasyon fold'unun da ağırlığını
+    yükler; eksik fold yükleme anında patladığı için hazırılık denetimi yedi
+    dosyanın tamamını ister (setup_model.py BRAIN_FILES ile aynı liste).
+    """
     for rel in (
         "classifier/model.safetensors",
         "sequence/model.safetensors",
         "segmentation/fold0.safetensors",
+        "segmentation/fold1.safetensors",
+        "segmentation/fold2.safetensors",
+        "segmentation/fold3.safetensors",
         "segmentation/fold4.safetensors",
     ):
         path = os.path.join(CACHE_DIR, rel)

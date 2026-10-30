@@ -1,0 +1,24 @@
+# ATIKVIEWER — derin AI worker (ai-worker) Python bağımlılıkları
+# Python 3.11–3.14 · kurulum:
+#   python -m venv .venv
+#   .venv\Scripts\python -m pip install -r ai-worker\requirements.txt
+#   .venv\Scripts\python ai-worker\setup_model.py     (akciğer + beyin modellerini indirir)
+#
+# Windows'ta tek komutla:  powershell -ExecutionPolicy Bypass -File windows\Kurulum.ps1
+
+# ── Çekirdek çıkarım ──────────────────────────────────────────────────────
+torch>=2.3                 # tensör çıkarımı (model_lib, ich_inference)
+torchvision>=0.18          # skp model mimarisi torchvision.models.video kullanır
+monai>=1.4                 # akciğer nodül bundle çıkarımı (MONAI lung_nodule_ct_detection)
+numpy>=1.26,<3             # tüm modüller
+opencv-python-headless>=4.9  # cv2: ICH ön işleme (GUI bağımlılığı yok, sunucuya uygun)
+safetensors>=0.4           # .safetensors ağırlık okuma (beyin modeli)
+huggingface_hub>=0.23      # model indirme (ai-worker/setup_model.py)
+nibabel>=5.0               # NIfTI okuma (ich_inference / validate_ich)
+
+# ── BT beyin ICH model kodu (MIT, ianpan/ct-head-hemorrhage-detection) ────
+# PyPI'da yayınlanmamıştır (pypi.org/pypi/skp → 404); doğrudan depodan,
+# üretimde kullanılan commit'e sabitlenmiş olarak kurulur. git gerektirir.
+skp @ git+https://github.com/i-pan/ct-head-hemorrhage-detection.git@914c57d
+scipy>=1.11                # skp bağımlılığı (scipy.ndimage)
+pandas>=2.0                # skp bağımlılığı

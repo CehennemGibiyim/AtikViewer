@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { UserInfo } from "@/lib/types";
+import { AUTH_LABELS, PACS_PRESETS, type PacsAuthType, type PacsConfig } from "@/lib/pacsPresets";
 
 type Tab = "profile" | "audit" | "ai" | "security" | "integration" | "compliance";
 interface AuditRow { id: number; ts: string; username: string; action: string; entityType: string; entityId: string; details: string; hash: string }
 interface PerfRow { engine: string; category: string; shown: number; approved: number; rejected: number; edited: number; pending: number; manualAdded: number; ppv: number | null }
 interface Status { keySource: string; plaintext: { studies: number; reports: number }; totals: Record<string, number>; retentionDraftDays: number }
-interface Settings { retentionDraftDays: number; criticalWebhookUrl: string; pacsBaseUrl: string; compliance: string; env: { llm: boolean; his: boolean; pacsAuth: boolean; keySource: string } }
+type Settings = {
+  retentionDraftDays: number;
+  criticalWebhookUrl: string;
+  pacsBaseUrl: string;
+  pacs: PacsForm;
+  compliance: string;
+  env: { llm: boolean; his: boolean; pacsAuth: boolean; keySource: string };
+};
+/** Sunucu sır alanlarını boş döndürür; varlıkları bu bayraklarla bildirir. */
+type PacsForm = PacsConfig & { hasPassword: boolean; hasToken: boolean; hasHeader: boolean };
+type PacsTestOut = { ok: boolean; steps: { name: string; ok: boolean; http: number | null; ms: number; message: string }[] };
 
 const COMPLIANCE = [
   { id: "intended", t: "Amaçlanan kullanım (intended use) belgesi", h: "Hangi modalite/endikasyon, hangi kullanıcı, karar desteği düzeyi." },
@@ -56,9 +67,18 @@ export default function AdminPanel({ user }: { user: UserInfo }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [comp, setComp] = useState<Record<string, string>>({});
+  // PACS formu (ayarlar ayrı state'te tutulur ki test/Kaydet sırasında elle düzenler kaybolmasın)
+  const [pacs, setPacs] = useState<PacsForm | null>(null);
+  const [pacsHint, setPacsHint] = useState("");
+  const [pacsTest, setPacsTest] = useState<PacsTestOut | null>(null);
+  const [pacsTesting, setPacsTesting] = useState(false);
   const loadSettings = useCallback(async () => {
     const [s, st] = await Promise.all([api<Settings>("/api/settings"), api<Status>("/api/admin/status")]);
-    if (s.ok) { setSettings(s.data); try { setComp(JSON.parse(s.data.compliance || "{}")); } catch { setComp({}); } }
+    if (s.ok) {
+      setSettings(s.data);
+      setPacs(s.data.pacs);
+      try { setComp(JSON.parse(s.data.compliance || "{}")); } catch { setComp({}); }
+    }
     if (st.ok) setStatus(st.data);
   }, []);
 
@@ -75,6 +95,41 @@ export default function AdminPanel({ user }: { user: UserInfo }) {
     const r = await api<{ error?: string }>("/api/settings", json("PUT", patch));
     flash(r.ok ? "Kaydedildi" : r.data.error ?? "Hata");
     void loadSettings();
+  };
+
+  // PACS: formu sunucuya yazar, ardından depolanmış ayarla bağlantı testi çalıştırır.
+  const pacsPayload = (c: PacsForm) => ({
+    name: c.name,
+    kind: c.kind,
+    qidoRoot: c.qidoRoot.trim(),
+    wadoRoot: c.wadoRoot.trim(),
+    allowSelfSigned: c.allowSelfSigned,
+    limit: c.limit,
+    includefield: c.includefield,
+    notes: c.notes,
+    auth: { type: c.auth.type, username: c.auth.username, password: c.auth.password, token: c.auth.token, headerName: c.auth.headerName, headerValue: c.auth.headerValue },
+  });
+
+  const savePacs = async (): Promise<boolean> => {
+    if (!pacs) return false;
+    const r = await api<{ error?: string }>("/api/settings", json("PUT", { pacs: pacsPayload(pacs) }));
+    if (!r.ok) { flash(r.data.error ?? "PACS kaydedilemedi"); return false; }
+    flash("PACS kaydedildi");
+    return true;
+  };
+
+  const testPacs = async () => {
+    if (!pacs) return;
+    setPacsTesting(true);
+    setPacsTest(null);
+    if (!(await savePacs())) { setPacsTesting(false); return; }
+    const r = await api<PacsTestOut & { error?: string }>("/api/pacs/test");
+    setPacsTest(
+      r.ok
+        ? r.data
+        : { ok: false, steps: [{ name: "Test", ok: false, http: null, ms: 0, message: r.data.error ?? "Test çalıştırılamadı" }] },
+    );
+    setPacsTesting(false);
   };
   const saveProfile = async () => {
     const r = await api<{ error?: string }>("/api/profile", json("PATCH", prof));
@@ -243,9 +298,82 @@ export default function AdminPanel({ user }: { user: UserInfo }) {
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div className={card}>
               <h2 className="text-sm font-bold text-slate-100">PACS — DICOMweb (QIDO-RS / WADO-RS)</h2>
-              <input id="pacs" defaultValue={settings.pacsBaseUrl} placeholder="https://pacs.kurum.local/dicom-web" className={`${input} mt-3 w-full`} />
-              <p className="mt-2 text-[11px] text-slate-500">Kimlik başlığı: <code>PACS_AUTH_HEADER</code> ortam değişkeni — {settings.env.pacsAuth ? <b className="text-emerald-300">tanımlı</b> : <b className="text-amber-300">tanımlı değil</b>}. Orthanc/dcm4chee uyumludur. C-FIND/C-MOVE (DIMSE) bu sürümde yoktur.</p>
-              <button className={`${btn} mt-3 bg-cyan-500 text-slate-950`} onClick={() => void saveSettings({ pacsBaseUrl: (document.getElementById("pacs") as HTMLInputElement).value })}>Kaydet</button>
+              {pacs && (
+                <div className="mt-3 grid gap-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label="PACS önceden ayarla"
+                      className={`${input} shrink-0`}
+                      value=""
+                      onChange={(e) => {
+                        const p = PACS_PRESETS[Number(e.target.value)];
+                        if (!p) return;
+                        setPacs({ ...pacs, ...p.fill, kind: p.kind, auth: { ...pacs.auth, ...(p.fill.auth ?? {}) } });
+                        setPacsHint(p.hint);
+                      }}
+                    >
+                      <option value="">Önceden ayarla…</option>
+                      {PACS_PRESETS.map((p, i) => (
+                        <option key={p.label} value={i}>{p.label}</option>
+                      ))}
+                    </select>
+                    <input className={`${input} flex-1`} placeholder="Bağlantı adı (ör. Radyoloji PACS)" value={pacs.name} onChange={(e) => setPacs({ ...pacs, name: e.target.value })} />
+                  </div>
+                  <input className={input} placeholder="QIDO-RS kökü — ör. https://pacs.kurum.local/dicom-web" value={pacs.qidoRoot} onChange={(e) => setPacs({ ...pacs, qidoRoot: e.target.value })} />
+                  <input className={input} placeholder="WADO-RS kökü (farklıysa; boş bırakılırsa QIDO kökü kullanılır)" value={pacs.wadoRoot} onChange={(e) => setPacs({ ...pacs, wadoRoot: e.target.value })} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select aria-label="Kimlik tipi" className={`${input} shrink-0`} value={pacs.auth.type} onChange={(e) => setPacs({ ...pacs, auth: { ...pacs.auth, type: e.target.value as PacsAuthType } })}>
+                      {Object.entries(AUTH_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                    {pacs.auth.type === "basic" && (
+                      <>
+                        <input className={`${input} w-32`} placeholder="Kullanıcı adı" value={pacs.auth.username} onChange={(e) => setPacs({ ...pacs, auth: { ...pacs.auth, username: e.target.value } })} />
+                        <input type="password" className={`${input} w-36`} placeholder={pacs.hasPassword ? "•••• (kayıtlı)" : "Parola"} value={pacs.auth.password} onChange={(e) => setPacs({ ...pacs, auth: { ...pacs.auth, password: e.target.value } })} />
+                      </>
+                    )}
+                    {pacs.auth.type === "bearer" && (
+                      <input type="password" className={`${input} flex-1`} placeholder={pacs.hasToken ? "•••• (kayıtlı)" : "Bearer token / OIDC jetonu"} value={pacs.auth.token} onChange={(e) => setPacs({ ...pacs, auth: { ...pacs.auth, token: e.target.value } })} />
+                    )}
+                    {pacs.auth.type === "header" && (
+                      <>
+                        <input className={`${input} w-40`} placeholder="Başlık adı (X-Api-Key)" value={pacs.auth.headerName} onChange={(e) => setPacs({ ...pacs, auth: { ...pacs.auth, headerName: e.target.value } })} />
+                        <input type="password" className={`${input} flex-1`} placeholder={pacs.hasHeader ? "•••• (kayıtlı)" : "Başlık değeri"} value={pacs.auth.headerValue} onChange={(e) => setPacs({ ...pacs, auth: { ...pacs.auth, headerValue: e.target.value } })} />
+                      </>
+                    )}
+                  </div>
+                  <label className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1"><input type="checkbox" checked={pacs.allowSelfSigned} onChange={(e) => setPacs({ ...pacs, allowSelfSigned: e.target.checked })} /> self-signed sertifikaya izin ver</span>
+                    <span className="flex items-center gap-1"><input type="checkbox" checked={pacs.includefield} onChange={(e) => setPacs({ ...pacs, includefield: e.target.checked })} /> includefield kullan</span>
+                    <span className="flex items-center gap-1">sonuç sınırı
+                      <input type="number" min={1} max={1000} className={input} style={{ width: 72 }} value={pacs.limit} onChange={(e) => setPacs({ ...pacs, limit: Number(e.target.value) || 50 })} />
+                    </span>
+                  </label>
+                  <textarea className={`${input} h-16 w-full resize-none`} placeholder="Kurum notları (AE başlığı, port, conformance statement vb.)" value={pacs.notes} onChange={(e) => setPacs({ ...pacs, notes: e.target.value })} />
+                  {pacsHint && <p className="text-[11px] text-cyan-300/90">💡 {pacsHint}</p>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button className={`${btn} bg-cyan-500 text-slate-950`} onClick={() => void savePacs()}>Kaydet</button>
+                    <button className={`${btn} bg-slate-700 text-slate-100 disabled:opacity-50`} disabled={pacsTesting} onClick={() => void testPacs()}>
+                      {pacsTesting ? "Test ediliyor…" : "Bağlantıyı test et"}
+                    </button>
+                    <span className="text-[10.5px] text-slate-500">{settings.env.pacsAuth ? "ortam: PACS_AUTH_HEADER tanımlı" : "ortam: PACS_AUTH_HEADER yok"}</span>
+                  </div>
+                  {pacsTest && (
+                    <ul className="grid gap-1">
+                      {pacsTest.steps.map((s, i) => (
+                        <li key={`${s.name}-${i}`} className={`rounded border px-2 py-1 text-[11px] ${s.ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-rose-500/30 bg-rose-500/10 text-rose-200"}`}>
+                          <b>{s.name}</b> {s.http !== null ? `· HTTP ${s.http}` : "· ağ"}{s.ms ? ` · ${s.ms} ms` : ""} — {s.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <p className="mt-3 text-[11px] text-slate-500">
+                Kimlik bilgileri sunucuda AES-256-GCM ile şifrelenir; istekler tarayıcıdan değil uygulama sunucusundan gider (CORS/PHI riski yok).
+                DIMSE (C-FIND/C-MOVE) doğrudan desteklenmez — yalnızca DICOMweb uçları veya Orthanc/dcm4chee kapısı kullanın.
+              </p>
             </div>
             <div className={card}>
               <h2 className="text-sm font-bold text-slate-100">Kritik bulgu bildirimi (webhook)</h2>
