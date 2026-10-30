@@ -58,6 +58,13 @@ async function main() {
     // Kapı 1: en az bir bulgu "Onay bekliyor" ve uyarı bandı görünür
     const pend = modal.getByRole("button", { name: "Onay bekliyor" });
     assert.ok((await pend.count()) >= 1, "en az bir bulgu 'Onay bekliyor' olmalı");
+
+    // Yazdırmada bulgu kesiti küçük görseliyle gösterilmeli (bbox'lı bulgu varsa)
+    const figCount = await modal.locator("#report-paper figure img").count();
+    assert.ok(
+      figCount >= 1,
+      `bulgu kesitleri rapor kâğıdında küçük görselle gösterilmeli (bulunan: ${figCount})`,
+    );
     await modal.getByText(/bulgu henüz gözden geçirilmedi/).waitFor();
 
     // Kapı 2: onay öncesi SR/FHIR indirme kilitli

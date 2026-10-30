@@ -778,9 +778,11 @@ export default function Workstation({ user }: { user: UserInfo }) {
         .filter((f) => f.category !== "Sistem" && f.category !== "ROI" && f.bbox)
         .sort((a, b) => (sevRank[b.severity] ?? 0) - (sevRank[a.severity] ?? 0))
         .slice(0, 4);
-      const toAdd = candidates
-        .filter((f) => !keyImages.some((k) => k.slice === f.sliceIndex))
-        .slice(0, Math.max(0, 4 - keyImages.length));
+    // Bulgu kesitleri yazdırmada küçük görseliyle görünecek: manuel yıldızlar dolu
+    // olsa bile bbox'lı bulgular için anahtar kesit eklenir (sert üst sınır 8 = KI_MAX).
+    const toAdd = candidates
+      .filter((f) => !keyImages.some((k) => k.slice === f.sliceIndex))
+      .slice(0, Math.max(0, 8 - keyImages.length));
       for (const f of toAdd) {
         try {
           const base = renderSlice(s, f.sliceIndex, s.defaultWL, s.defaultWW, false, 640);
@@ -977,32 +979,81 @@ export default function Workstation({ user }: { user: UserInfo }) {
     toast(`Tüm seriler birlikte analiz ediliyor (${imageSeries.length} seri)...`, 3000);
     try {
       setStatus("infer");
-      const seriesPayload = imageSeries.map((s) => {
-        const reps: string[] = [];
-        try {
-          const mid = Math.floor(s.slices.length / 2);
-          reps.push(renderSlice(s, mid, s.defaultWL, s.defaultWW, false, 512).toDataURL("image/jpeg", 0.7));
-          if (s.slices.length > 1) reps.push(renderSlice(s, Math.floor(s.slices.length / 4), s.defaultWL, s.defaultWW, false, 512).toDataURL("image/jpeg", 0.7));
-        } catch { /* kare render edilemezse o seri temsili görselsiz gönderilir */ }
-        return {
-          seriesUid: s.seriesUid,
-          modality: s.modality,
-          description: s.description,
-          bodyPart: s.bodyPart,
-          sliceCount: s.slices.length,
-          representativeImages: reps,
+      let result: AnalysisResult;
+      if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") {
+        // Statik web (GitHub Pages): sunucu yok — birleşik analiz tarayıcıda GERÇEK
+        // kural tabanlı AI ile çalışır (temsili/uydurma sonuç değil, gerçek piksel verisi).
+        pushFeed(`Statik web: ${imageSeries.length} seri tarayıcıda kural tabanlı AI ile taranıyor…`, "info");
+        const merged: Finding[] = [];
+        let ctSeries = 0;
+        for (const ms of imageSeries) {
+          const mp = resolveProtocol(ms, "auto");
+          if (mp === "ct-head" || mp === "ct-chest") {
+            ctSeries++;
+            pushFeed(`BT protokolü (${mp === "ct-head" ? "beyin — kanama adayı" : "toraks — nodül adayı"}): ${ms.description} · ${ms.slices.length} kesit…`);
+            const out = await runEngine(ms, mp, { aborted: () => false, onSlice: async () => {} });
+            if (!out) continue;
+            for (const f of out.findings) {
+              merged.push({ ...f, id: `ms-${merged.length}-${f.id}`, detail: `[${ms.modality} · ${ms.description}] ${f.detail}` });
+            }
+          } else {
+            // BT olmayan seri: dedektör uygulanamaz — uydurma bulgu üretme, dürüst sistem notu bırak.
+            merged.push({
+              id: `ms-sys-${merged.length}`,
+              sliceIndex: 0, sliceStart: 0, sliceEnd: ms.slices.length - 1, keySliceNumber: 1,
+              sliceRangeStr: ms.slices.length > 1 ? `Kesit 1 – ${ms.slices.length}` : "Kesit 1",
+              anatomicalLocation: "—", densityOrSignal: "—", sizeMmStr: "—", bbox: null,
+              label: `${ms.modality} serisi değerlendirildi`,
+              detail: "Kural tabanlı BT dedektörü yalnızca BT protokollerinde çalışır; bu seri için otomatik aday işaretleme yapılmadı. Görüntüler radyolog tarafından değerlendirilmelidir.",
+              category: "Sistem", severity: "normal", confidence: 0, confidenceKind: "none", source: "cv-heuristic",
+            } as Finding);
+          }
+        }
+        pushFeed(`✓ ${imageSeries.length} seri tarandı · ${merged.filter((f) => f.category !== "Sistem").length} aday odak (tarayıcıda, gerçek piksel verisi)`, "done");
+        const staticMeta = {
+          modality: imageSeries[0].modality,
+          bodyPart: imageSeries[0].bodyPart,
+          seriesDescription: `${imageSeries.length} seri birlikte değerlendirildi (${ctSeries} BT)`,
+          sliceCount: imageSeries.reduce((n, x) => n + x.slices.length, 0),
+          sliceThickness: imageSeries[0].sliceThickness,
         };
-      });
-      const rep = await fetch("/api/multi-analyze", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studyUid: series?.studyUid || imageSeries[0].studyUid,
-          clinicalNote,
-          series: seriesPayload,
-        }),
-      });
-      if (!rep.ok) throw new Error(((await rep.json()) as { error?: string }).error || "Birleşik analiz başarısız");
-      const result = (await rep.json()) as AnalysisResult;
+        const sres = await fetch("/api/analyze", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studyUid: series?.studyUid || imageSeries[0].studyUid,
+            engine: "cv-heuristic", findings: merged, clinicalNote, meta: staticMeta,
+          }),
+        });
+        if (!sres.ok) throw new Error(((await sres.json()) as { error?: string }).error || "Birleşik analiz başarısız");
+        result = (await sres.json()) as AnalysisResult;
+      } else {
+        const seriesPayload = imageSeries.map((s) => {
+          const reps: string[] = [];
+          try {
+            const mid = Math.floor(s.slices.length / 2);
+            reps.push(renderSlice(s, mid, s.defaultWL, s.defaultWW, false, 512).toDataURL("image/jpeg", 0.7));
+            if (s.slices.length > 1) reps.push(renderSlice(s, Math.floor(s.slices.length / 4), s.defaultWL, s.defaultWW, false, 512).toDataURL("image/jpeg", 0.7));
+          } catch { /* kare render edilemezse o seri temsili görselsiz gönderilir */ }
+          return {
+            seriesUid: s.seriesUid,
+            modality: s.modality,
+            description: s.description,
+            bodyPart: s.bodyPart,
+            sliceCount: s.slices.length,
+            representativeImages: reps,
+          };
+        });
+        const rep = await fetch("/api/multi-analyze", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studyUid: series?.studyUid || imageSeries[0].studyUid,
+            clinicalNote,
+            series: seriesPayload,
+          }),
+        });
+        if (!rep.ok) throw new Error(((await rep.json()) as { error?: string }).error || "Birleşik analiz başarısız");
+        result = (await rep.json()) as AnalysisResult;
+      }
 
       // ───── Derin AI: uygun BT serilerinde yerel MONAI nodül çıkarımı (ücretsiz, yerel) ─────
       let mergedFindings = result.findings;
@@ -1116,7 +1167,11 @@ export default function Workstation({ user }: { user: UserInfo }) {
   const saveReport = async (r: ReportData, action: "save" | "approve"): Promise<SaveResult> => {
     let findingsText = r.findingsText;
     if (r.measurementsText.trim() && !findingsText.includes("ÖLÇÜMLER")) findingsText += `\n\nÖLÇÜMLER\n${r.measurementsText}`;
-    const kiPayload = r.keyImages.length ? JSON.stringify(r.keyImages.slice(0, 4)) : r.keyImageDataUrl;
+    // Kayıtta ilk 4 anahtar kesit saklanır; bulgu kesitleri öne alınır ki raporu
+    // yeniden açtığınızda "Yazdır" çıktısında o kesitlerin küçük görseli kaybolmasın.
+    const fSlices = new Set(r.findings.filter((f) => f.bbox && f.category !== "Sistem" && f.category !== "ROI").map((f) => f.sliceIndex));
+    const prioritizedKi = [...r.keyImages].sort((a, b) => Number(fSlices.has(b.slice)) - Number(fSlices.has(a.slice)));
+    const kiPayload = prioritizedKi.length ? JSON.stringify(prioritizedKi.slice(0, 4)) : r.keyImageDataUrl;
     let res: Response;
     try {
       res = await fetch("/api/reports", {
@@ -1188,9 +1243,10 @@ export default function Workstation({ user }: { user: UserInfo }) {
       {/* ── Üst Çubuk 1 ── */}
       <header aria-label="Ana işlemler" className="relative z-20 flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[#1a2230] bg-[#0b0f16] px-2 py-1.5 print:hidden">
         <div className="mr-1 flex shrink-0 items-center gap-2">
-          {/* Yerel SVG ikonu; next/image ek ağ/bellek katmanı sağlamaz. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- yerel statik SVG */}
-          <img src="/icons/rad-ai-scan.svg" alt="Radyoloji AI Tarama" className="h-7 w-7 rounded" />
+          {/* Yerel AI tarama animasyonu (GIF); next/image ek ağ katmanı sağlamaz.
+              basePath (GitHub Pages) ön eki eklenmezse /icons/404 verir. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- yerel animasyonlu GIF */}
+          <img src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/icons/ai-scan.gif`} alt="Radyoloji AI tarama animasyonu" className="h-7 w-7 rounded" />
           <div className="flex h-7 w-7 items-center justify-center rounded bg-gradient-to-br from-cyan-400 to-emerald-500 font-black text-[#06131a]">A</div>
           <span className="font-mono text-sm font-black tracking-[0.18em] text-slate-100">ATIK<span className="text-cyan-400">VIEWER</span></span>
           <span className="rounded border border-slate-700 px-1 py-0.5 font-mono text-[8px] text-slate-500">{APP_BUILD.split("-").slice(-1)[0]}</span>
