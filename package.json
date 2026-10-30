@@ -23,14 +23,14 @@
     "jpeg-js": "^0.4.4",
     "jpeg-lossless-decoder-js": "^2.1.2",
     "next": "^16.4.3",
-    "pg": "8.20.0",
+    "pg": "8.23.1",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.17",
     "@types/node": "22.19.15",
-    "@types/pg": "8.18.0",
+    "@types/pg": "8.23.1",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "0.31.10",
