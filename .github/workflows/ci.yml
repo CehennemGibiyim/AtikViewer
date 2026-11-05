@@ -25,7 +25,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app_db
       NEXT_TELEMETRY_DISABLED: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -77,7 +77,7 @@ jobs:
       # Test-only synthetic series are compiled into this UI-test artifact only.
       NEXT_PUBLIC_E2E_FIXTURES: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
