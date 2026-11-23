@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import ClientRecovery from "@/components/ClientRecovery";
+import UpdateNotice from "@/components/UpdateNotice";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="tr">
-      <body className="bg-[#070a0f] text-slate-200 antialiased"><ClientRecovery />{children}</body>
+      <body className="bg-[#070a0f] text-slate-200 antialiased"><ClientRecovery />{children}<UpdateNotice /></body>
     </html>
   );
 }

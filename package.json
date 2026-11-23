@@ -1,5 +1,5 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "atikviewer",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -46,5 +46,6 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "0.25.12"
     }
-  }
+  },
+  "version": "0.1.0"
 }

@@ -1,0 +1,65 @@
+name: Release
+
+# v0.1.0 gibi bir etiket itildiğinde Windows kurulum paketi ve taşınabilir ZIP
+# üretilir, GitHub Releases'e yüklenir. Uygulama açılışta bu sürümü kontrol eder.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Etiket olmadan derlemek için sürüm (örn. 0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Sürüm tutarlılığını denetle
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "v${{ inputs.version }}" }
+          $version = $tag -replace '^v', ''
+          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $src = (Select-String -Path src/lib/version.ts -Pattern 'APP_VERSION\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          if ($version -ne $pkg -or $version -ne $src) {
+            throw "Sürüm uyuşmuyor — etiket: $version, package.json: $pkg, src/lib/version.ts: $src"
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - run: npm ci
+
+      - name: Inno Setup kur
+        run: choco install innosetup --no-progress -y
+
+      - name: Kurulum paketi ve taşınabilir ZIP üret
+        shell: pwsh
+        run: ./windows/Paket.ps1 -Version $env:VERSION
+
+      - name: Release yayınla
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ATIKVIEWER v${{ env.VERSION }}
+          generate_release_notes: true
+          files: |
+            dist/ATIKVIEWER-${{ env.VERSION }}-Setup.exe
+            dist/ATIKVIEWER-${{ env.VERSION }}-portable.zip
+
+      - name: Derleme çıktılarını sakla (elle çalıştırmada)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATIKVIEWER-${{ env.VERSION }}-windows
+          path: dist/*
