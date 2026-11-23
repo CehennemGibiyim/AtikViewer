@@ -85,3 +85,7 @@ if (-not $SkipZip) {
 
 Write-Host ""
 Write-Host "Paketler hazır: $Dist" -ForegroundColor Green
+
+# robocopy "başarılı" için 1 döndürür; betiğin çıkış kodunu açıkça sıfırla
+# (aksi halde CI adımı başarısız sayılır).
+exit 0
