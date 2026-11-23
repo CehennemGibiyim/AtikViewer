@@ -261,6 +261,18 @@ export interface PaletteColorLUT {
   b: Uint8Array | Uint16Array;
 }
 
+/** Mamografi (MG) serisine ait DICOM etiketleri. Etiket yoksa ilgili alan boş kalır (tahmin üretilmez). */
+export interface MammographyInfo {
+  /** Image Laterality (0020,0062): "R" | "L" | "" */
+  laterality: "R" | "L" | "";
+  /** View Position (0018,5101) ham değeri: CC, MLO, ML, XCCL vb. */
+  viewPosition: string;
+  /** Breast Implant Present (0028,1300) = YES */
+  implant: boolean;
+  /** Tomosentez (DBT): ImageType/SeriesDescription içinde TOMOSYNTHESIS, 3D veya DBT geçiyor. */
+  tomosynthesis: boolean;
+}
+
 export interface SuvInfo {
   /** SUVbw = piksel (Bq/mL) × factor. null ise hesaplanamadı; neden `note` içinde. */
   factor: number | null;
@@ -300,6 +312,8 @@ export interface SeriesData {
   /** Sütun (x) yönündeki piksel aralığı; `pixelSpacing` satır (y) aralığıdır. */
   pixelSpacingX?: number;
   suv?: SuvInfo;
+  /** Yalnızca MG serilerinde doldurulur. */
+  mammo?: MammographyInfo;
   orientation?: number[];
   frameOfRef?: string;
   defaultWL: number;
@@ -332,6 +346,10 @@ export interface HangingProtocolCellConfig {
     descriptionRegex?: string;
     protocolNameRegex?: string;
     sequenceIndex?: number;
+    /** Mamografi: Image Laterality eşleşmesi ("R" | "L"). */
+    laterality?: string;
+    /** Mamografi: View Position eşleşmesi ("CC" | "MLO" ...). */
+    view?: string;
   };
   windowPreset?: string;
   customWL?: { wl: number; ww: number };

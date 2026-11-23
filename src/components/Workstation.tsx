@@ -139,9 +139,12 @@ function SeriesCard({ s, active, onClick }: { s: SeriesData; active: boolean; on
       <Thumb series={s} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] font-black text-cyan-300">{s.modality}</span>
+          <span className="font-mono text-[10px] font-black text-cyan-300">
+            {s.modality}
+            {s.mammo?.viewPosition ? <span className="ml-1 text-emerald-300">{s.mammo.laterality}{s.mammo.viewPosition}</span> : null}
+          </span>
           <span className="font-mono text-[9px] font-bold text-slate-400">
-            {s.specialType === "sr" ? "Yapısal Rapor" : s.specialType === "pdf" ? "PDF Rapor" : s.specialType === "ecg" ? "12-Kanal EKG" : `${s.slices.length} kesit`}
+            {s.specialType === "sr" ? "Yapısal Rapor" : s.specialType === "pdf" ? "PDF Rapor" : s.specialType === "ecg" ? "12-Kanal EKG" : `${s.slices.length} kesit${s.mammo?.tomosynthesis ? " · DBT" : ""}`}
           </span>
         </div>
         <div className="truncate text-[11px] font-semibold text-slate-200" title={s.description}>{s.description}</div>
@@ -1409,7 +1412,7 @@ export default function Workstation({ user }: { user: UserInfo }) {
                 />
                 {series && (
                   <>
-                    <div className="pointer-events-none absolute left-3 top-2 font-mono text-[10.5px] leading-relaxed text-cyan-200/80"><div className="font-bold text-white">{series.patientName}</div><div>{series.modality} · {series.description}</div><div className="text-slate-400">ID: {series.patientId}</div></div>
+                    <div className="pointer-events-none absolute left-3 top-2 font-mono text-[10.5px] leading-relaxed text-cyan-200/80"><div className="font-bold text-white">{series.patientName}</div><div>{series.modality} · {series.description}</div><div className="text-slate-400">ID: {series.patientId}</div>{series.mammo && (series.mammo.laterality || series.mammo.viewPosition || series.mammo.tomosynthesis) && <div className="font-bold text-emerald-300">{[series.mammo.laterality === "R" ? "SAĞ MEME" : series.mammo.laterality === "L" ? "SOL MEME" : "", series.mammo.viewPosition, series.mammo.tomosynthesis ? "DBT" : ""].filter(Boolean).join(" · ")}</div>}{series.mammo?.implant && <div className="text-amber-300">Meme implantı bildirilmiş</div>}</div>
                     <div className="pointer-events-none absolute right-3 top-2 text-right font-mono text-[10.5px] leading-relaxed text-cyan-200/80"><div className="font-bold text-cyan-300">Kesit {slice + 1}/{series.slices.length}{series.sliceThickness ? ` · ${series.sliceThickness} mm` : ""}</div><div>Zoom %{Math.round(zoom * 100)}</div>{hoverVal !== null && <div className="font-bold text-emerald-300">{hoverVal.toFixed(0)} {series.unit}{series.suv?.factor ? ` · SUV ${(hoverVal * series.suv.factor).toFixed(2)}` : ""}</div>}{series.suv && !series.suv.factor && <div className="text-amber-300" title={series.suv.note}>SUV yok: {series.suv.note}</div>}</div>
                     <div className="pointer-events-none absolute bottom-2 left-3 font-mono text-[10.5px] text-cyan-200/80">{series.isColor ? "True Color (RGB)" : `WL ${Math.round(wl)} · WW ${Math.round(ww)}`}{invert ? " · TERS" : ""} · {pxMm.toFixed(3)} mm/px</div>
                   </>

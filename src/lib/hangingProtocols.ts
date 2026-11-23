@@ -162,6 +162,24 @@ export const SYSTEM_HANGING_PROTOCOLS: HangingProtocolRule[] = [
       { cellIndex: 1, seriesMatcher: { sequenceIndex: 1 }, syncSlice: true },
     ],
   },
+  {
+    id: "sys-mg-4view",
+    name: "Mamografi (RCC / LCC / RMLO / LMLO 2×2)",
+    description:
+      "Dört poz mamografisini DICOM View Position ve Image Laterality etiketlerine göre standart düzende dizer: üst sıra CC, alt sıra MLO.",
+    isSystem: true,
+    match: {
+      modalities: ["MG"],
+      minSeriesCount: 4,
+    },
+    layout: "2x2",
+    cells: [
+      { cellIndex: 0, seriesMatcher: { modality: "MG", laterality: "R", view: "CC" } },
+      { cellIndex: 1, seriesMatcher: { modality: "MG", laterality: "L", view: "CC" } },
+      { cellIndex: 2, seriesMatcher: { modality: "MG", laterality: "R", view: "MLO" } },
+      { cellIndex: 3, seriesMatcher: { modality: "MG", laterality: "L", view: "MLO" } },
+    ],
+  },
 ];
 
 const LOCAL_STORAGE_KEY = "atik_user_hanging_protocols";
@@ -196,6 +214,8 @@ export function isHangingProtocol(value: unknown): value is HangingProtocolRule 
       if (!validPattern(m.descriptionRegex) || !validPattern(m.protocolNameRegex)) return false;
       if (m.modality !== undefined && typeof m.modality !== "string") return false;
       if (m.sequenceIndex !== undefined && (typeof m.sequenceIndex !== "number" || !Number.isInteger(m.sequenceIndex) || m.sequenceIndex < 0)) return false;
+    if (m.laterality !== undefined && (typeof m.laterality !== "string" || m.laterality.length > 8)) return false;
+    if (m.view !== undefined && (typeof m.view !== "string" || m.view.length > 12)) return false;
     }
   }
   return indices.has(0);
@@ -242,13 +262,31 @@ export function findMatchingHangingProtocol(series: SeriesData, allSeries: Serie
   return null;
 }
 
+/** Mamografi hücresi: etiket varsa etiket, yoksa seri açıklaması üzerinden eşleşir. */
+function matchesMammoCell(s: SeriesData, laterality?: string, view?: string): boolean {
+  const wantLat = (laterality ?? "").trim().toUpperCase();
+  const wantView = (view ?? "").trim().toUpperCase();
+  if (!wantLat && !wantView) return true;
+  const haveLat = (s.mammo?.laterality ?? "").trim().toUpperCase();
+  const haveView = (s.mammo?.viewPosition ?? "").trim().toUpperCase();
+  const desc = s.description.toUpperCase();
+  const latOk = !wantLat || (haveLat ? haveLat === wantLat : desc.includes(wantLat));
+  const viewOk = !wantView || (haveView ? haveView === wantView : desc.includes(wantView));
+  return latOk && viewOk;
+}
+
 /** Hücre eşleştirmesi başka hastanın serisine yanlışlıkla geçmesin; sıra #1 geçerli seridir. */
 export function resolveHangingCellSeries(
   cell: HangingProtocolRule["cells"][number], current: SeriesData, available: SeriesData[]
 ): SeriesData | null {
   const pool = Array.from(new Map([current, ...available].filter((s) => s.studyUid === current.studyUid && imageSeries(s)).map((s) => [s.id, s])).values());
   const m = cell.seriesMatcher;
-  const candidates = pool.filter((s) => (!m?.modality || s.modality.toUpperCase() === m.modality.toUpperCase()) && matches(m?.descriptionRegex, s.description) && matches(m?.protocolNameRegex, protocolName(s)));
+  const candidates = pool.filter((s) =>
+    (!m?.modality || s.modality.toUpperCase() === m.modality.toUpperCase()) &&
+    matchesMammoCell(s, m?.laterality, m?.view) &&
+    matches(m?.descriptionRegex, s.description) &&
+    matches(m?.protocolNameRegex, protocolName(s))
+  );
   return candidates[m?.sequenceIndex ?? 0] ?? null;
 }
 

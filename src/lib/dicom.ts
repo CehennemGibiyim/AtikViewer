@@ -1,7 +1,7 @@
 import { parseDicom, type DicomDataSet } from "dicom-parser";
 import { inflateSync, unzipSync } from "fflate";
 import { assertNotAborted, withImportTimeout } from "./importOperation";
-import type { DicomOverlayPlane, DicomTag, PaletteColorLUT, Pixels, SeriesData } from "./types";
+import type { DicomOverlayPlane, DicomTag, MammographyInfo, PaletteColorLUT, Pixels, SeriesData } from "./types";
 import { suvFromDataset, parseTm } from "./suv";
 import { applyCharset } from "./dicomCharset";
 import { codecName, decodeEncapsulatedFrames, isCodecSupported, type RawFrame } from "./codecs";
@@ -37,6 +37,9 @@ const TAG_NAMES: Record<string, string> = {
   x00280101: "Bits Stored", x00280102: "High Bit", x00280103: "Pixel Representation",
   x00281050: "Window Center", x00281051: "Window Width", x00281052: "Rescale Intercept",
   x00281053: "Rescale Slope",
+  // Mamografi / tomosentez
+  x00185101: "View Position", x00200062: "Image Laterality", x00281300: "Breast Implant Present",
+  x00181030: "Protocol Name",
 };
 
 const TS_EXPLICIT_BE = "1.2.840.10008.1.2.2";
@@ -629,6 +632,20 @@ export async function loadMedicalFiles(
     groups.set(s.seriesUid, arr);
   }
 
+  /** Mamografi serisi: yalnızca DICOM'da gerçekten bulunan etiketler kullanılır. */
+  function mammoInfoOf(ds: DicomDataSet): MammographyInfo {
+    const rawLat = (ds.string("x00200062") ?? "").trim().toUpperCase();
+    const laterality: "R" | "L" | "" = rawLat.startsWith("R") ? "R" : rawLat.startsWith("L") ? "L" : "";
+    const imageType = (ds.string("x00080008") ?? "").toUpperCase();
+    const serialized = `${imageType} ${ds.string("x0008103e") ?? ""} ${ds.string("x00181030") ?? ""}`.toUpperCase();
+    return {
+      laterality,
+      viewPosition: (ds.string("x00185101") ?? "").trim().toUpperCase(),
+      implant: (ds.string("x00281300") ?? "").trim().toUpperCase() === "YES",
+      tomosynthesis: /TOMOSYNTH|DBT|\b3D\b/.test(serialized),
+    };
+  }
+
   for (const [uid, raw] of groups) {
     const first = meta.get(uid);
     if (!first || raw.length === 0) continue;
@@ -698,6 +715,7 @@ export async function loadMedicalFiles(
     }
 
     const iop = first.string("x00200037")?.split("\\").map(Number);
+    const mammo = modality.toUpperCase() === "MG" ? mammoInfoOf(first) : undefined;
     result.push({
       id: `dicom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       seriesUid: uid,
@@ -722,6 +740,7 @@ export async function loadMedicalFiles(
       sopClassUid: first.string("x00080016")?.trim(),
       pixelSpacingX,
       suv: modality === "PT" ? suvFromDataset(first, list.map((s) => s.seriesTimeS ?? null).sort((a, b) => (a ?? 1e12) - (b ?? 1e12))) : undefined,
+      mammo,
       orientation: iop && iop.length >= 6 && !iop.some(Number.isNaN) ? iop.slice(0, 6) : undefined,
       frameOfRef: first.string("x00200052"),
       defaultWL,
