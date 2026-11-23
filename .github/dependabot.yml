@@ -1,0 +1,28 @@
+# Dependabot — ücretsiz otomatik güvenlik ve sürüm güncelleme PR'ları.
+# Her salı npm bağımlılıkları ve GitHub Actions sürümleri taranır.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 5
+    groups:
+      next-ekosistemi:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+          - "@next/*"
+      test-aracari:
+        patterns:
+          - "playwright*"
+          - "tsx"
+          - "eslint*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 3

@@ -1,0 +1,53 @@
+# ATIKVIEWER — tek komutla tam yığın (uygulama + PostgreSQL).
+# Kullanım:
+#   1) cp .env.example .env   (POSTGRES_PASSWORD ve DATA_ENCRYPTION_KEY doldurun)
+#   2) docker compose up --build -d
+#   3) http://localhost:3000 adresini açın
+# İlk açılışta şema otomatik uygulanır (drizzle-kit push).
+
+name: atikviewer
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: app_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Dışarıdan DB erişimi gerekiyorsa açın:
+    # ports:
+    #   - "5432:5432"
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/app_db
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-}
+      PACS_AUTH_HEADER: ${PACS_AUTH_HEADER:-}
+      HIS_API_KEY: ${HIS_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    volumes:
+      # Şifreleme anahtarı (.data/enc.key) ve şifreli DICOM deposu burada saklanır.
+      - appdata:/app/.data
+    command: >
+      sh -c "npx drizzle-kit push --config=drizzle.config.ts --force && npm start"
+
+volumes:
+  pgdata:
+  appdata:
