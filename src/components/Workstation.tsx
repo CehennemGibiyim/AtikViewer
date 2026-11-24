@@ -28,7 +28,8 @@ import { assertNotAborted, withImportTimeout } from "@/lib/importOperation";
 import { loadMedicalFiles, type ImportStats } from "@/lib/dicom";
 import { resolveProtocol, runEngine } from "@/lib/ai/engine";
 import { runImageReview } from "@/lib/ai/imageReview";
-import { modelCardFor, DEEP_MODEL_CARD, DEEP_BRAIN_MODEL_CARD } from "@/lib/modelCards";
+import { runChestXray } from "@/lib/ai/chestXray";
+import { modelCardFor, DEEP_MODEL_CARD, DEEP_BRAIN_MODEL_CARD, CXR_MODEL_CARD } from "@/lib/modelCards";
 import { deepScan, deepScanEligible, mergeDeepFindings, type DeepScanOutput } from "@/lib/deepScan";
 import { KIND_LABEL, annotationSummary } from "@/lib/geometry";
 import { zipAnonymized } from "@/lib/dicomWrite";
@@ -827,7 +828,12 @@ export default function Workstation({ user }: { user: UserInfo }) {
     let maskMap: OverlayData["masks"] = new Map();
     let review: ImageReview | undefined;
     let notes: string[] = [];
-    const frameName = ["US", "XA", "RF", "XC"].includes(s.modality.toUpperCase()) ? "Kare" : "Kesit";
+    let cxrUsed = false;
+    const frameName = ["US", "XA", "RF", "XC"].includes(s.modality.toUpperCase())
+      ? "Kare"
+      : ["CR", "DX"].includes(s.modality.toUpperCase())
+        ? "Görüntü"
+        : "Kesit";
 
     const sweep = async (k: number) => {
       const t0 = performance.now();
@@ -842,6 +848,21 @@ export default function Workstation({ user }: { user: UserInfo }) {
     try {
       if (proto === "none") {
         pushFeed("Otomatik inceleme kapalı (seçiminiz). Görüntüleri radyolog değerlendirmelidir.", "info");
+      } else if (proto === "cxr") {
+        engine = "cv-heuristic";
+        pushFeed(
+          `Akciğer grafisi dedektörü: ${N} görüntü gerçek piksellerden ölçülüyor (kural tabanlı, yerel, ücretsiz; bulgular doğrulama kapısından geçer).`,
+          "info"
+        );
+        setStatus("scanning");
+        const out = await runChestXray(s, {
+          aborted: () => runRef.current !== run,
+          onSlice: async (k) => { setSlice(k); await sweep(k); },
+        });
+        if (!out || runRef.current !== run) return;
+        findings = out.findings;
+        notes = out.notes;
+        cxrUsed = true;
       } else if (proto === "image-review") {
         engine = "image-review";
         pushFeed(`${s.modality} için ${N} ${frameName.toLowerCase()} gerçek piksel verisinden ölçülecek; klinik tanı/triyaj değildir.`, "info");
@@ -949,6 +970,13 @@ export default function Workstation({ user }: { user: UserInfo }) {
         ...result,
         model: `${result.model} + ${deepProto === "ct-head" ? "ct-head-hemorrhage-detection" : "MONAI lung_nodule_ct_detection"} (yerel, ücretsiz)`,
         modelCard: deepProto === "ct-head" ? DEEP_BRAIN_MODEL_CARD : DEEP_MODEL_CARD,
+      };
+    }
+    if (cxrUsed) {
+      result = {
+        ...result,
+        model: `${CXR_MODEL_CARD.name} v${CXR_MODEL_CARD.version} (kural tabanlı, yerel, ücretsiz)`,
+        modelCard: CXR_MODEL_CARD,
       };
     }
 

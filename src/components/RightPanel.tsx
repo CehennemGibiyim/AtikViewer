@@ -43,7 +43,7 @@ interface Props {
   setClinicalNote: (s: string) => void;
   protocol: AiProtocol;
   setProtocol: (p: AiProtocol) => void;
-  resolved: "ct-head" | "ct-chest" | "image-review" | "none";
+  resolved: "ct-head" | "ct-chest" | "cxr" | "image-review" | "none";
   analysis: AnalysisResult | null;
   revealedIds: Set<string>;
   feed: FeedItem[];
@@ -95,6 +95,7 @@ function priorDelta(f: Finding, priors: SavedReport[]): string | null {
 const PROTO_LABEL = {
   "ct-head": "BT Beyin · kanama adayı (kural tabanlı)",
   "ct-chest": "BT Toraks · nodül adayı (kural tabanlı)",
+  cxr: "Akciğer grafisi (CR/DX) · adaylar yalnızca doğrulanmış tiplerde",
   "image-review": "Her karede gerçek piksel ölçümü · tanı / triyaj yok",
   none: "Otomatik inceleme kapalı (seçiminiz)",
 } as const;
@@ -140,7 +141,7 @@ export default function RightPanel(p: Props) {
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
               Analiz protokolü
               <select value={p.protocol} onChange={(e) => p.setProtocol(e.target.value as AiProtocol)} className="mt-1 w-full rounded-lg border border-[#1e2735] bg-[#0e141d] px-2 py-1.5 text-xs normal-case tracking-normal text-slate-200 focus:outline-none">
-                <option value="auto">Otomatik (BT adayı / diğerlerinde kesit incelemesi)</option>
+                <option value="auto">Otomatik (BT adayı / akciğer grafisi / diğerlerinde kesit incelemesi)</option>
                 <option value="review">Tüm karelerde görüntü ölçümü (tanısal değil)</option>
                 <option value="ct-head">BT Beyin — kanama adayı</option>
                 <option value="ct-chest">BT Toraks — nodül adayı</option>
@@ -157,7 +158,15 @@ export default function RightPanel(p: Props) {
             <textarea value={p.clinicalNote} onChange={(e) => p.setClinicalNote(e.target.value)} placeholder="Klinik bilgi / hekim notu…" rows={2} className="w-full resize-none rounded-lg border border-[#1e2735] bg-[#0e141d] p-2.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/50 focus:outline-none" />
 
             <button onClick={p.onStart} disabled={!series || busy || !!(series.specialType && series.specialType !== "image")} className="cursor-pointer rounded-lg bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-bold text-[#06131a] shadow-lg disabled:opacity-40">
-              {busy ? "Kareler tek tek işleniyor…" : p.resolved === "image-review" ? `▶ ${status === "done" ? "Yeniden incele" : "Görüntü incelemesini başlat"} (${series?.slices.length ?? 0} kare)` : status === "done" ? "⟳ Yeniden analiz et" : `▶ Analizi başlat (${series?.slices.length ?? 0} kesit)`}
+              {busy
+                ? "Kareler tek tek işleniyor…"
+                : p.resolved === "image-review"
+                  ? `▶ ${status === "done" ? "Yeniden incele" : "Görüntü incelemesini başlat"} (${series?.slices.length ?? 0} kare)`
+                  : p.resolved === "cxr"
+                    ? `▶ ${status === "done" ? "Yeniden analiz et" : "Akciğer grafisi analizini başlat"} (${series?.slices.length ?? 0} görüntü)`
+                    : status === "done"
+                      ? "⟳ Yeniden analiz et"
+                      : `▶ Analizi başlat (${series?.slices.length ?? 0} kesit)`}
             </button>
             {p.onStartAll && (p.loadedCount ?? 0) > 1 && (
               <button onClick={p.onStartAll} disabled={busy} className="cursor-pointer rounded-lg border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-xs font-bold text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
@@ -172,7 +181,13 @@ export default function RightPanel(p: Props) {
                   <span className="rounded border border-emerald-500/40 bg-emerald-950 px-2 py-0.5 font-mono text-xs font-bold">Kesit {Math.min(scan.scannedSlices + 1, scan.totalSlices)} / {scan.totalSlices}</span>
                 </div>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#13202b]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400" style={{ width: `${((scan.scannedSlices + scan.sliceProgress) / Math.max(1, scan.totalSlices)) * 100}%` }} /></div>
-                <div className="mt-1.5 font-mono text-[10px] text-slate-500">{p.resolved === "image-review" ? "Her karede gerçek pikseller: parlaklık · kontrast · varsa kırmızı/mavi renk oranı" : "BT pikselleri: doku maskesi → aday odak incelemesi"}</div>
+                <div className="mt-1.5 font-mono text-[10px] text-slate-500">
+                  {p.resolved === "image-review"
+                    ? "Her karede gerçek pikseller: parlaklık · kontrast · varsa kırmızı/mavi renk oranı"
+                    : p.resolved === "cxr"
+                      ? "Grafi pikselleri: akciğer alanı → KTO · kostofrenik eğim · dansite · periferik hava"
+                      : "BT pikselleri: doku maskesi → aday odak incelemesi"}
+                </div>
               </div>
             )}
 

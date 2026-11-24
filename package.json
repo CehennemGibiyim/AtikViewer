@@ -8,6 +8,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx tests/image-review.test.ts",
+    "test:cxr": "tsx tests/cxr.test.ts",
+    "validate:cxr": "tsx scripts/cxr-validate.ts",
     "test:pacs": "tsx tests/pacs.test.ts",
     "test:menu": "node tests/menu-interactions.cjs",
     "test:folder": "node tests/folder-import.cjs",

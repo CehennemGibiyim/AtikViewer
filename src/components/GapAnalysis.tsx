@@ -143,9 +143,11 @@ export default function GapAnalysis() {
           <h2 className="text-sm font-black tracking-wide text-amber-300">⚠ Kodla kapatılamayanlar ve açık kalan sınırlar</h2>
           <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-slate-300 md:grid-cols-2">
             <li>
-              <b className="text-amber-200">Yapay zeka klinik olarak doğrulanmadı.</b> BT beyin (kanama adayı) ve BT toraks (nodül adayı)
-              için <b>kural tabanlı</b> (derin öğrenme olmayan) motor gerçek pikselden ölçüm yapar. Duyarlılık/özgüllük bilinmiyor;
-              MR ve direkt grafide dedektör yok (örnek MR/CR vakaları açıkça DEMO etiketli).
+              <b className="text-amber-200">Yapay zeka klinik olarak doğrulanmadı.</b> BT beyin (kanama adayı), BT toraks (nodül
+              adayı) ve akciğer grafisi (CR/DX: kardiyomegali, efüzyon, konsolidasyon, pnömotoraks, nodül) için <b>kural tabanlı</b>
+              (derin öğrenme olmayan) motor gerçek pikselden ölçüm yapar. Akciğer grafisinde doğrulama <b>sentetik phantom sette</b>
+              ölçüldü; gerçek hasta verisiyle duyarlılık/özgüllük bilinmiyor. Ölçümü olmayan bulgu tipi arayüzde gösterilmez; MR/US
+              için dedektör yok (örnek MR/CR vakaları açıkça DEMO etiketli).
             </li>
             <li>
               <b className="text-amber-200">Düzenleyici yol sizin sürecinizdir.</b> Tıbbi cihaz yazılımı sınıflandırması (MDR/TİTCK),

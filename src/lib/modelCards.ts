@@ -1,4 +1,6 @@
 import type { EngineKind, ModelCard } from "./types";
+import { CXR_CATEGORIES } from "./ai/cxrValidation";
+import { CXR_VALIDATION_REPORT } from "./ai/cxrValidationData";
 
 export const CV_MODEL_CARD: ModelCard = {
   name: "ATIK-CV Aday Bulgu Motoru",
@@ -9,7 +11,7 @@ export const CV_MODEL_CARD: ModelCard = {
     "Derin öğrenme KULLANMAZ. HU eşikleme, kafatası/akciğer maskesi çıkarımı, 3 boyutlu bağlantılı bileşen analizi ve şekil/boyut süzgeçleri (kural tabanlı).",
   limitations: [
     "Klinik olarak doğrulanmamıştır; duyarlılık/özgüllük bilinmiyor.",
-    "Yalnızca HU kalibrasyonlu BT serilerinde çalışır; MR ve direkt grafide dedektör yoktur.",
+    "Bu motor yalnızca HU kalibrasyonlu BT serilerinde çalışır; MR ve direkt grafi için ayrı dedektör (ATIK-CXR) vardır.",
     "Kanama adayı: kalsifikasyon, venöz sinüs, artefakt ve kafatası tabanı yakınında yanlış pozitif verebilir; kafatası halkası kapalı olmayan kesitler atlanır.",
     "Nodül adayı: plevraya komşu nodüller kaçabilir; damar uçları nodül olarak işaretlenebilir.",
     "Skor, olasılık değildir; kalibre edilmemiş bir sezgisel puandır.",
@@ -30,6 +32,34 @@ export const IMAGE_REVIEW_CARD: ModelCard = {
     "İnceleme noktaları istatistiksel kare seçimidir; patolojik bulgu anlamına gelmez.",
   ],
   validation: "Tanısal performans doğrulaması yoktur; klinik karar için kullanılamaz.",
+};
+
+/**
+ * Akciğer grafisi (CR/DX) kural tabanlı aday motoru.
+ * Doğrulama metni, `npm run validate:cxr` ile üretilen rapordan okunur (arayüzdeki kapıyla aynı kaynak).
+ */
+export const CXR_MODEL_CARD: ModelCard = {
+  name: "ATIK-CXR Akciğer Grafisi Aday Motoru",
+  version: "0.4.0",
+  intendedUse:
+    "CR/DX akciğer grafilerinde kardiyomegali, plevral efüzyon, konsolidasyon, pnömotoraks ve pulmoner nodül ADAYI işaretleyerek radyoloğun ilgili bölgeye doğrudan gitmesini sağlamak. Tanı koymaz; nihai onay radyoloji uzmanına aittir.",
+  method:
+    "Derin öğrenme KULLANMAZ. Hava/gövde eşiklemesi (Otsu + hava seviyesi), bağlantılı bileşen analizi ve morfolojik işlemlerle akciğer alanı; kolon bazlı diyafram profili; kardiyotorasik oran (iki akciğer arası en geniş aralık / toraks genişliği); lateral kostofrenik taban eğimi; dansite bileşenlerinin boyut/şekil süzgeci; lateral periferik şeritte hava oranı. Çıkarım TAMAMEN yerel makinede yapılır; hasta verisi dışarı gönderilmez, ücretli servis kullanılmaz.",
+  limitations: [
+    "Kural tabanlıdır; derin öğrenme modeli değildir ve klinik olarak doğrulanmamıştır.",
+    "Yalnızca CR/DX projeksiyon grafilerinde çalışır (BT, MR, US ve mamografide çalışmaz).",
+    "KTO ölçümü AP/supin pozisyon, rotasyon ve inspirasyon derinliğinden etkilenir; PA grafi varsayılır.",
+    "Kalp/mediasten sınırına bitişik opasiteler ve çok küçük (<3 mm) nodüller kaçabilir; plevraya komşu nodüller ve silik infiltratlar da gözden kaçabilir.",
+    "Pnömotoraks yalnızca lateral periferik hava bandı belirginse işaretlenir; cilt katlantısı, skapula ve yamalı saydamlık yanlış pozitif verebilir.",
+    "Skor, kalibre olasılık değildir; kalibre edilmemiş bir sezgisel puandır.",
+  ],
+  validation:
+    `${CXR_VALIDATION_REPORT.dataset.cases} vakalık ${CXR_VALIDATION_REPORT.dataset.kind === "clinical" ? "klinik" : "SENTETİK (phantom)"} sette ölçüldü — ` +
+    CXR_CATEGORIES.map((c) => {
+      const m = CXR_VALIDATION_REPORT.categories[c];
+      return m ? `${c}: duyarlılık %${Math.round(m.sensitivity * 100)}, özgüllük %${Math.round(m.specificity * 100)}` : `${c}: ölçüm yok`;
+    }).join("; ") +
+    `. ${CXR_VALIDATION_REPORT.dataset.note}`,
 };
 
 export const DEMO_MODEL_CARD: ModelCard = {

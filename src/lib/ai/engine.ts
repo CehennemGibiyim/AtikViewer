@@ -1,23 +1,27 @@
 import type { AiProtocol, BBox, Finding, Pixels, SeriesData, Severity } from "../types";
+import { cxrEligible } from "./chestXray";
 
 /**
  * Kural tabanlı aday bulgu motoru (derin öğrenme DEĞİL, klinik olarak doğrulanmamış).
  * Piksel verisinden gerçekten hesaplar: HU eşikleme → kafatası/akciğer maskesi → kesit başına 2B bileşenler →
  * kesitler arası örtüşmeyle 3B birleştirme → boyut/şekil süzgeci → ölçümler.
  */
-export type Protocol = "ct-head" | "ct-chest" | "image-review" | "none";
+/** cxr: projeksiyon grafi (CR/DX) için kural tabanlı akciğer grafisi dedektörü. */
+export type Protocol = "ct-head" | "ct-chest" | "image-review" | "cxr" | "none";
 
-/** Otomatik mod: tanımlı BT dedektörü yoksa gerçek piksel incelemesine düş; tanı uydurma. */
+/** Otomatik mod: tanımlı dedektör yoksa gerçek piksel incelemesine düş; tanı uydurma. */
 export function resolveProtocol(s: SeriesData, req: AiProtocol): Protocol {
   if (req === "none" || (s.specialType && s.specialType !== "image") || !s.slices.length) return "none";
   if (req === "review") return "image-review";
   const huCt = s.modality.toUpperCase() === "CT" && s.unit === "HU" && !s.isColor && s.slices.length >= 5;
-  if (req === "ct-head" || req === "ct-chest") return huCt ? req : "image-review";
+  if (req === "ct-head" || req === "ct-chest") return huCt ? req : cxrEligible(s) === null ? "cxr" : "image-review";
   if (huCt) {
     const txt = `${s.bodyPart} ${s.description}`.toUpperCase().replace(/İ/g, "I").replace(/Ş/g, "S").replace(/Ö/g, "O");
     if (/(HEAD|BRAIN|BEYIN|KAFA|NEURO|CRANI)/.test(txt)) return "ct-head";
     if (/(CHEST|THORAX|THORAC|TORAKS|TORAX|LUNG|AKCIGER)/.test(txt)) return "ct-chest";
   }
+  // CR/DX projeksiyon grafisi: akciğer grafisi dedektörü (yerel, ücretsiz, doğrulama kapılı)
+  if (cxrEligible(s) === null) return "cxr";
   return "image-review";
 }
 

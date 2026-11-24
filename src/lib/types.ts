@@ -63,6 +63,8 @@ export interface Lesion {
 export type FindingSource = "cv-heuristic" | "image-review" | "simulated-sample" | "manual" | "ai-model";
 
 export interface FindingMetrics {
+  /** Akciğer grafisi: kardiyotorasik oran (%). */
+  ctrPercent?: number;
   volumeMl?: number;
   maxDiameterMm?: number;
   zExtentMm?: number;

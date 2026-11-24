@@ -22,7 +22,13 @@ async function main() {
   assert(!doppler.findings.some((f) => /tromb|darl|stenoz|kanama|acil/i.test(f.label)));
   console.log(`PASS US renkli Doppler: 12/12 kare, kırmızı/mavi alan, tanısal bulgu yok. Anahtar kareler: ${doppler.review.keyFrames.map((n) => n + 1).join(", ")}`);
 
-  for (const id of ["mr-brain", "cr-chest"] as const) {
+  // CR akciğer grafisi artık ayrı dedektöre gider (ATIK-CXR); pivot: demo bulgu sızmamalı.
+  const crSample = buildSampleCase("cr-chest")!;
+  assert.equal(resolveProtocol({ ...crSample, isSample: false, lesions: [] }, "auto"), "cxr");
+  assert.equal(resolveProtocol({ ...crSample, isSample: false, lesions: [] }, "review"), "image-review");
+  console.log("PASS CR grafi: otomatik modda akciğer grafisi dedektörüne, elle seçimde görüntü incelemesine gider.");
+
+  for (const id of ["mr-brain"] as const) {
     const sample = buildSampleCase(id)!;
     // Yüklenen gerçek hastada önceden kodlanmış DEMO bulgular yoktur.
     const realStyle: SeriesData = { ...sample, isSample: false, lesions: [] };
@@ -41,6 +47,7 @@ async function main() {
   assert.equal(resolveProtocol(ct, "review"), "image-review");
   assert.equal(resolveProtocol(ct, "none"), "none");
   assert.equal(resolveProtocol({ ...ct, description: "ABDOMEN", bodyPart: "ABDOMEN" }, "auto"), "image-review");
+  assert.equal(resolveProtocol({ ...ct, modality: "MG", unit: "SI" }, "auto"), "image-review");
   console.log("PASS BT: beyin için tanımlı aday motoru korunur; abdomen ve elle seçimde görüntü ölçümü çalışır.");
 
   const blank: SeriesData = { ...us, id: "blank", modality: "MG", isColor: false, rgbaSlices: undefined, slices: [new Int16Array(us.width * us.height).fill(42)], lesions: [] };

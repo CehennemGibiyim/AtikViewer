@@ -249,8 +249,8 @@ const BASE_ITEMS: GapItem[] = [
     id: "a-model", category: "ai", title: "Gerçek klinik AI modeli çıkarımı (ONNX / MONAI / TorchXRayVision)",
     status: "yok", priority: "P0", effort: "L",
     market: ["Aidoc", "Viz.ai", "Lunit", "Annalise", "Gleamer"],
-    ours: "Bulgular örnek vakalara önceden tanımlı SİMÜLASYON. Yüklenen gerçek DICOM için bulgu üretilmiyor (artık 'normal' denmiyor, 'model bağlı değil' deniyor).",
-    action: "İlk gerçek modül: akciğer grafisi sınıflandırma (ONNX Runtime Web veya sunucu); sonra BT beyin kanama.",
+    ours: "BT için kural tabanlı adaylar + yerel MONAI modelleri; akciğer grafisi (CR/DX) için ATIK-CXR: KTO, kostofrenik eğim, dansite bileşenleri ve periferik hava ölçümü. Aday bulgu yalnızca kendi verimizde duyarlılık/özgüllük ölçülen tiplerde gösterilir (şu an sentetik phantom set); ölçümü olmayan tip arayüzde kilitli kalır.",
+    action: "Gerçek hasta arşivinden etiketli CR/DX setiyle yeniden ölçüm; ardından ONNX tabanlı sınıflandırıcı (TorchXRayVision) entegrasyonu.",
   },
   {
     id: "a-loc", category: "ai", title: "Lezyon yerelleştirme: kutu + kesit aralığı + boyut/dansite",
